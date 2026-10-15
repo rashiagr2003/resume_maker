@@ -34,7 +34,9 @@ jobs:
         run: flutter pub get
 
       - name: Build Flutter Web
-        run: flutter build web --release --base-href /${{ github.event.repository.name }}/
+        run: |
+          REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)
+          flutter build web --release --base-href "/$REPO_NAME/"
 
       - name: Upload Artifact
         uses: actions/upload-pages-artifact@v3
