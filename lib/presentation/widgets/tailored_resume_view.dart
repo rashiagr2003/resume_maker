@@ -817,7 +817,7 @@ class _InteractiveResumeDocument extends StatelessWidget {
           RegExp(r'\b(Project|Demo)(?:\s*↗)?$', caseSensitive: false).hasMatch(current);
 
       if (!isAlreadyBullet && !isHeaderOrDate) {
-        if (actionVerbRegex.hasMatch(current) || (inExpOrProj && current.length > 20)) {
+        if (actionVerbRegex.hasMatch(current)) {
           current = '• $current';
         }
       }
@@ -1016,9 +1016,69 @@ class _InteractiveResumeDocument extends StatelessWidget {
         continue;
       }
 
+      final cleanProjectCandidate = line.replaceFirst(RegExp(r'^[\-\*•#\s]+'), '').trim();
+      final actionVerbInClean = RegExp(
+        r'^(?:Built|Developed|Implemented|Integrated|Added|Used|Contributed|Executed|Automated|'
+        r'Visualized|Designed|Created|Architected|Engineered|Configured|Maintained|Optimized|'
+        r'Spearheaded|Streamlined|Collaborated|Conducted|Tested|Managed|Led|Authored|Generated|'
+        r'Deployed|Orchestrated|Secured|Refactored|Enhanced|Accelerated|Formulated|Drafted|'
+        r'Monitored|Supervised|Produced|Established|Published|Trained|Mentored|Assisted|'
+        r'Pioneered|Achieved|Facilitated|Analyzed|Researched|Solved|Coordinated|Directed|'
+        r'Identified|Standardized|Tracked|Validated|Wrote|Programmed|Delivered|Resolved|'
+        r'Prepared|Reviewed|Supported)\b',
+        caseSensitive: false,
+      ).hasMatch(cleanProjectCandidate);
+
+      final isLoneLinkLine = inProjectsSection &&
+          (RegExp(
+            r'^\s*\[?(?:Project|Demo|Link)(?:\s*Link)?(?:\s*↗)?\]?(?:\(https?://[^\)]+\)|https?://\S+)?\s*$',
+            caseSensitive: false,
+          ).hasMatch(cleanProjectCandidate) ||
+              RegExp(r'^\s*https?://\S+\s*$').hasMatch(cleanProjectCandidate));
+
+      final hasProjectLinkIndicator = cleanProjectCandidate.contains('](') ||
+          cleanProjectCandidate.toLowerCase().contains('[project') ||
+          cleanProjectCandidate.toLowerCase().contains('[demo') ||
+          cleanProjectCandidate.toLowerCase().contains('project link') ||
+          cleanProjectCandidate.toLowerCase().contains('demo link') ||
+          RegExp(r'\b(Project|Demo)(?:\s*Link)?(?:\s*↗)?$', caseSensitive: false).hasMatch(cleanProjectCandidate);
+
+      final isProjectHeaderCandidate = inProjectsSection &&
+          !isLoneLinkLine &&
+          !actionVerbInClean &&
+          !cleanProjectCandidate.endsWith('.') &&
+          (hasProjectLinkIndicator ||
+              cleanProjectCandidate.contains('|') ||
+              cleanProjectCandidate.contains(' - ') ||
+              cleanProjectCandidate.contains('–') ||
+              cleanProjectCandidate.length < 100);
+
+      final isJobTitleCandidate = inExperienceSection &&
+          !actionVerbInClean &&
+          !cleanProjectCandidate.endsWith('.') &&
+          !_isSectionHeader(cleanProjectCandidate) &&
+          !_isContactLine(cleanProjectCandidate) &&
+          !_isLinksLine(cleanProjectCandidate) &&
+          cleanProjectCandidate.length < 80 &&
+          !cleanProjectCandidate.toLowerCase().startsWith('http') &&
+          !RegExp(r'^\s*(?:pvt\.?\s*ltd|inc\.?|llc|ltd\.?)\s*$', caseSensitive: false).hasMatch(cleanProjectCandidate);
+
       // Bullet points
-      if (line.startsWith('-') || line.startsWith('*') || line.startsWith('•')) {
-        final bulletText = line.replaceFirst(RegExp(r'^[\-\*•]\s*'), '').trim();
+      if (!isProjectHeaderCandidate &&
+          !isJobTitleCandidate &&
+          !isLoneLinkLine &&
+          (line.startsWith('-') ||
+              line.startsWith('*') ||
+              line.startsWith('•') ||
+              (inProjectsSection && actionVerbInClean) ||
+              (inExperienceSection && actionVerbInClean))) {
+        var bulletText = line.replaceFirst(RegExp(r'^[\-\*•#\s]+'), '').trim();
+        if (inProjectsSection) {
+          bulletText = bulletText.replaceAll(
+            RegExp(r'(\[(?:Demo|Project|Link)(?:\s*↗)?\]\((https?://[^)]+)\)|\b(?:Project|Demo)(?:\s*Link)?(?:\s*↗)?)$', caseSensitive: false),
+            '',
+          ).trim();
+        }
         // NEVER render an empty pointer if there is no sentence!
         if (bulletText.isEmpty) {
           index++;
@@ -1092,14 +1152,18 @@ class _InteractiveResumeDocument extends StatelessWidget {
       }
 
       // If line contains accidental literal $1 $2 artifact, recover real date
-      var processedLine = line;
+      var processedLine = isProjectHeaderCandidate ? cleanProjectCandidate : line;
       if (processedLine.contains(r'$1')) {
         final origMatch = RegExp(
           r'((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*\d{4}\s*[\-–—]\s*(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*\d{4}|Present)|\b\d{4}\s*[\-–—]\s*\d{4}\b)',
           caseSensitive: false,
         ).firstMatch(originalResume);
-        final realDate = origMatch?.group(1) ?? 'December 2025 – May 2026';
-        processedLine = processedLine.replaceAll(r'$1 $2 - $1 $2', realDate).replaceAll(r'$1 $2', realDate);
+        final realDate = origMatch?.group(1) ?? '';
+        processedLine = processedLine
+            .replaceAll(r'$1 $2 - $1 $2', realDate)
+            .replaceAll(r'$1 $2', realDate)
+            .replaceAll(r'$1', '')
+            .replaceAll(r'$2', '');
       }
 
       // Experience/Education date lines
@@ -1130,7 +1194,7 @@ class _InteractiveResumeDocument extends StatelessWidget {
           ).firstMatch(originalResume);
           formattedDate = origMatch != null
               ? origMatch.group(1)!.replaceAll(RegExp(r'\s*[\-–—]\s*'), ' - ')
-              : 'December 2025 - May 2026';
+              : rawDate;
         }
 
         widgets.add(
@@ -1175,7 +1239,7 @@ class _InteractiveResumeDocument extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 3),
             child: _buildRichTextWithClickableLinks(
               processedLine,
-              isItalic: true,
+              isItalic: false,
             ),
           ),
         );
@@ -1189,6 +1253,11 @@ class _InteractiveResumeDocument extends StatelessWidget {
         if (cgpaMatch != null) {
           final degree = processedLine.replaceAll(cgpaMatch.group(0)!, '').replaceAll('|', '').trim();
           final cgpa = cgpaMatch.group(0)!.trim();
+          final isDegree = RegExp(
+            r'\b(Bachelor|Master|B\.Tech|M\.Tech|B\.E\.|B\.Sc|M\.Sc|BCA|MCA|MBA|Ph\.D|Diploma|Degree)\b',
+            caseSensitive: false,
+          ).hasMatch(degree);
+
           widgets.add(
             Padding(
               padding: const EdgeInsets.only(top: 2, bottom: 4),
@@ -1198,10 +1267,10 @@ class _InteractiveResumeDocument extends StatelessWidget {
                   Expanded(
                     child: Text(
                       degree,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontStyle: FontStyle.italic,
-                        color: Color(0xFF475569),
+                      style: TextStyle(
+                        fontSize: isDegree ? 11.5 : 11,
+                        fontWeight: isDegree ? FontWeight.w700 : FontWeight.w500,
+                        color: isDegree ? const Color(0xFF1E1B4B) : const Color(0xFF475569),
                       ),
                     ),
                   ),
@@ -1222,18 +1291,25 @@ class _InteractiveResumeDocument extends StatelessWidget {
         }
       }
 
-      // In PROJECTS section: ONLY match project title lines (NOT bullet sentences or descriptions!)
+      if (inProjectsSection && isLoneLinkLine) {
+        index++;
+        continue;
+      }
+
+      // In PROJECTS section: match project title lines
       final hasPipe = processedLine.contains('|');
       final linkMatch = RegExp(r'\[([^\]]+)\]\(([^)]+)\)').firstMatch(processedLine);
-      final wordLinkMatch = RegExp(r'\b(Project|Demo)(?:\s*↗)?$', caseSensitive: false).firstMatch(processedLine);
+      final wordLinkMatch = RegExp(r'\b(Project|Demo)(?:\s*Link)?(?:\s*↗)?$', caseSensitive: false).firstMatch(processedLine);
       final isProjectHeader = inProjectsSection &&
-          !processedLine.startsWith('•') &&
-          !processedLine.startsWith('-') &&
-          !processedLine.startsWith('*') &&
-          (hasPipe || linkMatch != null || wordLinkMatch != null);
+          !isLoneLinkLine &&
+          !actionVerbInClean &&
+          (hasPipe || linkMatch != null || wordLinkMatch != null || isProjectHeaderCandidate);
 
       if (isProjectHeader) {
-        String cleanTitle = processedLine.replaceAll(' - ', ' | ');
+        // Strip markdown links and URLs from cleanTitle FIRST before any hyphen manipulation!
+        String cleanTitle = processedLine
+            .replaceFirst(RegExp(r'^[\-\*•#\s]+'), '')
+            .trim();
         String? linkText;
         String? linkUrl;
 
@@ -1256,7 +1332,13 @@ class _InteractiveResumeDocument extends StatelessWidget {
               break;
             }
           }
-        } else if (hasPipe) {
+        } else if (cleanTitle.toLowerCase().contains('project link')) {
+          linkText = 'Project Link';
+          cleanTitle = cleanTitle.replaceAll(RegExp(r'\s*Project\s*Link\s*', caseSensitive: false), '').trim();
+        } else if (cleanTitle.toLowerCase().contains('demo link')) {
+          linkText = 'Demo Link';
+          cleanTitle = cleanTitle.replaceAll(RegExp(r'\s*Demo\s*Link\s*', caseSensitive: false), '').trim();
+        } else if (hasPipe || isProjectHeaderCandidate) {
           final pName = cleanTitle.split('|').first.trim().toLowerCase();
           final origMatches = RegExp(r'\[?(?:Project|Demo)\]?\((https?://[^\)]+)\)', caseSensitive: false).allMatches(originalResume);
           for (final om in origMatches) {
@@ -1265,14 +1347,51 @@ class _InteractiveResumeDocument extends StatelessWidget {
               om.end + 20 < originalResume.length ? om.end + 20 : originalResume.length,
             ).toLowerCase();
             if (ctx.contains(pName) || pName.split(' ').any((w) => w.length > 4 && ctx.contains(w))) {
-              linkText = om.group(1)!;
-              linkUrl = om.group(2)!.trim();
+              linkText = 'Project';
+              linkUrl = om.group(1)!.trim();
               break;
             }
           }
         }
 
+        // Lookahead: if no link found on this line, check if the next line is a lone link
+        if (linkText == null && linkUrl == null && index + 1 < lines.length) {
+          final nextLine = lines[index + 1].trim();
+          final nextLinkMatch = RegExp(r'\[([^\]]+)\]\(([^)]+)\)').firstMatch(nextLine);
+          final nextUrlMatch = RegExp(r'^https?://\S+$').firstMatch(nextLine);
+          if (nextLinkMatch != null) {
+            linkText = nextLinkMatch.group(1)!.replaceAll('↗', '').trim();
+            linkUrl = nextLinkMatch.group(2)!.trim();
+            index++; // consume next line
+          } else if (nextUrlMatch != null) {
+            linkText = 'Project';
+            linkUrl = nextUrlMatch.group(0)!.trim();
+            index++; // consume next line
+          }
+        }
+
+        // Remove any remaining raw markdown link or URL patterns from cleanTitle
+        cleanTitle = cleanTitle.replaceAll(RegExp(r'\[[^\]]*\]\([^)]*\)'), '').trim();
+        cleanTitle = cleanTitle.replaceAll(RegExp(r'https?://\S+'), '').trim();
+
+        // Remove trailing/leading pipes and extra spaces
+        cleanTitle = cleanTitle.replaceAll(RegExp(r'^\s*\|\s*|\s*\|\s*$'), '').trim();
+
+        // Unjam hyphenated project technology suffixes: e.g. "Dashboard-Tableau" -> "Dashboard | Tableau"
+        cleanTitle = cleanTitle.replaceAllMapped(
+          RegExp(r'\b(Dashboard|Analysis|Store|App|Project|Platform)-(Tableau|Power\s*BI|PowerBI|Excel|Flutter|React|Python|Java|[A-Z][a-z]+)\b'),
+          (m) => '${m.group(1)} | ${m.group(2)}',
+        );
+
+        // Only replace spaced hyphens: e.g. "Project Name - Flutter" -> "Project Name | Flutter"
+        cleanTitle = cleanTitle.replaceAllMapped(RegExp(r'(?<=\S)\s+-\s+(?=\S)'), (m) => ' | ').trim();
+
         cleanTitle = cleanTitle.replaceAll(RegExp(r'\s*\|\s*$'), '').trim();
+
+        if (cleanTitle.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').isEmpty) {
+          index++;
+          continue;
+        }
 
         widgets.add(
           Padding(
@@ -1282,21 +1401,43 @@ class _InteractiveResumeDocument extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
-                  child: Text(
-                    cleanTitle,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF1E1B4B),
-                    ),
-                  ),
+                  child: linkUrl != null
+                      ? InkWell(
+                          onTap: () => _launchExternalUrl(context, linkUrl!),
+                          child: Text(
+                            cleanTitle,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1E1B4B),
+                            ),
+                          ),
+                        )
+                      : Text(
+                          cleanTitle,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1E1B4B),
+                          ),
+                        ),
                 ),
-                if (linkText != null && linkUrl != null) ...[
+                if (linkText != null) ...[
                   const SizedBox(width: 8),
-                  _InteractiveLinkItem(
-                    label: linkText,
-                    url: linkUrl,
-                  ),
+                  if (linkUrl != null)
+                    _InteractiveLinkItem(
+                      label: linkText,
+                      url: linkUrl,
+                    )
+                  else
+                    Text(
+                      linkText,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF4F46E5),
+                      ),
+                    ),
                 ],
               ],
             ),
@@ -1307,20 +1448,21 @@ class _InteractiveResumeDocument extends StatelessWidget {
       }
 
       // General body text
-      final isTitle = !inSkillsSection &&
-          !inProjectsSection &&
-          !processedLine.contains('.') &&
-          !processedLine.contains(',') &&
-          processedLine.length < 40 &&
-          (processedLine.toLowerCase().contains('developer') ||
-           processedLine.toLowerCase().contains('engineer') ||
-           processedLine.toLowerCase().contains('bachelor') ||
-           processedLine.toLowerCase().contains('master') ||
-           processedLine.toLowerCase().contains('b.tech'));
+      final isTitle = isJobTitleCandidate ||
+          (!inSkillsSection &&
+              !inProjectsSection &&
+              !processedLine.endsWith('.') &&
+              !actionVerbInClean &&
+              processedLine.length < 80);
 
       // If in Experience or Projects and line is an accomplishment/bullet, render with bullet point row and hanging indent!
       if ((inExperienceSection || inProjectsSection) &&
           !isTitle &&
+          !isProjectHeaderCandidate &&
+          (processedLine.startsWith('•') ||
+              processedLine.startsWith('-') ||
+              processedLine.startsWith('*') ||
+              actionVerbInClean) &&
           processedLine.length > 15 &&
           !processedLine.contains('|') &&
           !processedLine.contains('[Project]') &&

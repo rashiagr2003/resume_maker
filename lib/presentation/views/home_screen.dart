@@ -71,6 +71,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     PrivacyCleanupService.clearTemporaryBrowserStorage();
   }
 
+  void _syncControllersToProvider() {
+    ref.read(resumeInputProvider.notifier).updateResumeText(_resumeController.text);
+    ref.read(resumeInputProvider.notifier).updateJobDescription(_jdController.text);
+    if (_cityController.text.trim().isNotEmpty) {
+      ref.read(resumeInputProvider.notifier).updateTargetCity(_cityController.text.trim());
+    }
+    ref.read(resumeInputProvider.notifier).updateOptionalFields(
+      title: _titleController.text.trim().isEmpty ? null : _titleController.text.trim(),
+      company: _companyController.text.trim().isEmpty ? null : _companyController.text.trim(),
+      domain: _domainController.text.trim().isEmpty ? null : _domainController.text.trim(),
+      level: _seniorityController.text.trim().isEmpty ? null : _seniorityController.text.trim(),
+    );
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.detached) {
@@ -739,6 +753,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
           onPressed: isAnalyzing
               ? null
               : () {
+                  _syncControllersToProvider();
+                  ref.read(tailoredResumeProvider.notifier).reset();
                   final input = ref.read(resumeInputProvider);
                   if (!input.isValid) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -999,10 +1015,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                           elevation: 4,
                         ),
                         onPressed: () {
+                          _syncControllersToProvider();
+                          final currentInput = ref.read(resumeInputProvider);
                           ref
                               .read(tailoredResumeProvider.notifier)
                               .tailorResume(
-                                input: inputState,
+                                input: currentInput,
                                 analysis: analysis,
                                 forceOverride: forceOverride,
                               );

@@ -49,22 +49,51 @@ class _PdfSpacingProfile {
     required this.pageMargin,
   });
 
+  _PdfSpacingProfile expandWithRemainingSpace(double remaining) {
+    if (remaining <= 0) return this;
+
+    final gapBoost = (remaining * 0.08).clamp(0.0, 16.0);
+    final headerBoost = (remaining * 0.05).clamp(0.0, 12.0);
+    final entryTopBoost = (remaining * 0.035).clamp(0.0, 7.0);
+    final bulletPaddingBoost = (remaining * 0.025).clamp(0.0, 4.5);
+    final lineSpacingBoost = (remaining * 0.0006).clamp(0.0, 0.10);
+    final fontBoost = remaining > 100 ? 0.4 : (remaining > 50 ? 0.2 : 0.0);
+
+    return _PdfSpacingProfile(
+      nameFontSize: nameFontSize + (fontBoost > 0 ? 1.0 : 0.0),
+      subTitleFontSize: subTitleFontSize + (fontBoost > 0 ? 0.3 : 0.0),
+      contactFontSize: contactFontSize + (fontBoost > 0 ? 0.2 : 0.0),
+      headerMarginBottom: headerMarginBottom + headerBoost,
+      sectionHeaderFontSize: sectionHeaderFontSize + (fontBoost > 0 ? 0.4 : 0.0),
+      sectionGap: sectionGap + gapBoost,
+      sectionHeaderBottomPadding: sectionHeaderBottomPadding + (gapBoost * 0.1).clamp(0.0, 1.5),
+      entryTopPadding: entryTopPadding + entryTopBoost,
+      entryBottomPadding: entryBottomPadding + (entryTopBoost * 0.3).clamp(0.0, 1.0),
+      bulletFontSize: bulletFontSize + fontBoost,
+      bulletLineSpacing: bulletLineSpacing + lineSpacingBoost,
+      bulletPaddingBottom: bulletPaddingBottom + bulletPaddingBoost,
+      bodyFontSize: bodyFontSize + fontBoost,
+      bodyLineSpacing: bodyLineSpacing + lineSpacingBoost,
+      pageMargin: pageMargin,
+    );
+  }
+
   // Profile A: Extra Spacious (for concise resumes <= 22 lines) - fully utilizes 1 A4 page height
   static const extraSpacious = _PdfSpacingProfile(
     nameFontSize: 25.0,
     subTitleFontSize: 11.8,
     contactFontSize: 10.0,
-    headerMarginBottom: 16.0,
+    headerMarginBottom: 18.0,
     sectionHeaderFontSize: 12.0,
-    sectionGap: 21.0,
+    sectionGap: 24.0,
     sectionHeaderBottomPadding: 5.0,
-    entryTopPadding: 8.5,
-    entryBottomPadding: 2.0,
-    bulletFontSize: 10.4,
-    bulletLineSpacing: 1.35,
-    bulletPaddingBottom: 5.2,
-    bodyFontSize: 10.4,
-    bodyLineSpacing: 1.35,
+    entryTopPadding: 9.0,
+    entryBottomPadding: 2.2,
+    bulletFontSize: 10.5,
+    bulletLineSpacing: 1.36,
+    bulletPaddingBottom: 6.0,
+    bodyFontSize: 10.5,
+    bodyLineSpacing: 1.36,
     // 0.50 in top/bottom (36 pt), 0.58 in sides (42 pt)
     pageMargin: pw.EdgeInsets.symmetric(horizontal: 42.0, vertical: 36.0),
   );
@@ -74,15 +103,15 @@ class _PdfSpacingProfile {
     nameFontSize: 24.5,
     subTitleFontSize: 11.2,
     contactFontSize: 9.8,
-    headerMarginBottom: 13.5,
+    headerMarginBottom: 15.0,
     sectionHeaderFontSize: 11.8,
-    sectionGap: 16.5,
-    sectionHeaderBottomPadding: 4.0,
-    entryTopPadding: 7.0,
-    entryBottomPadding: 1.5,
+    sectionGap: 18.0,
+    sectionHeaderBottomPadding: 4.2,
+    entryTopPadding: 7.5,
+    entryBottomPadding: 1.8,
     bulletFontSize: 10.2,
     bulletLineSpacing: 1.32,
-    bulletPaddingBottom: 4.5,
+    bulletPaddingBottom: 4.8,
     bodyFontSize: 10.2,
     bodyLineSpacing: 1.32,
     pageMargin: pw.EdgeInsets.symmetric(horizontal: 42.0, vertical: 36.0),
@@ -93,15 +122,15 @@ class _PdfSpacingProfile {
     nameFontSize: 23.5,
     subTitleFontSize: 11.0,
     contactFontSize: 9.5,
-    headerMarginBottom: 11.0,
+    headerMarginBottom: 12.0,
     sectionHeaderFontSize: 11.5,
-    sectionGap: 13.0,
-    sectionHeaderBottomPadding: 3.2,
-    entryTopPadding: 5.0,
-    entryBottomPadding: 1.0,
+    sectionGap: 13.5,
+    sectionHeaderBottomPadding: 3.5,
+    entryTopPadding: 5.5,
+    entryBottomPadding: 1.2,
     bulletFontSize: 10.0,
     bulletLineSpacing: 1.28,
-    bulletPaddingBottom: 3.6,
+    bulletPaddingBottom: 3.8,
     bodyFontSize: 10.0,
     bodyLineSpacing: 1.28,
     pageMargin: pw.EdgeInsets.symmetric(horizontal: 42.0, vertical: 36.0),
@@ -109,42 +138,61 @@ class _PdfSpacingProfile {
 
   // Profile D: Compact (for dense 35 - 41 lines)
   static const compact = _PdfSpacingProfile(
-    nameFontSize: 22.0,
-    subTitleFontSize: 10.5,
-    contactFontSize: 9.2,
-    headerMarginBottom: 8.5,
-    sectionHeaderFontSize: 11.0,
-    sectionGap: 9.5,
-    sectionHeaderBottomPadding: 2.5,
-    entryTopPadding: 3.5,
+    nameFontSize: 21.5,
+    subTitleFontSize: 10.2,
+    contactFontSize: 9.0,
+    headerMarginBottom: 7.5,
+    sectionHeaderFontSize: 10.8,
+    sectionGap: 8.5,
+    sectionHeaderBottomPadding: 2.2,
+    entryTopPadding: 2.8,
     entryBottomPadding: 0.8,
-    bulletFontSize: 9.8,
-    bulletLineSpacing: 1.25,
-    bulletPaddingBottom: 2.8,
-    bodyFontSize: 9.8,
-    bodyLineSpacing: 1.25,
-    // 0.55 in sides (40 pt), 0.47 in top/bottom (34 pt)
-    pageMargin: pw.EdgeInsets.symmetric(horizontal: 40.0, vertical: 34.0),
+    bulletFontSize: 9.6,
+    bulletLineSpacing: 1.22,
+    bulletPaddingBottom: 2.4,
+    bodyFontSize: 9.6,
+    bodyLineSpacing: 1.22,
+    // 0.52 in sides (38 pt), 0.42 in top/bottom (30 pt)
+    pageMargin: pw.EdgeInsets.symmetric(horizontal: 38.0, vertical: 30.0),
   );
 
-  // Profile E: Ultra Compact (safety net for extremely dense 42+ lines)
-  static const ultraCompact = _PdfSpacingProfile(
-    nameFontSize: 21.0,
-    subTitleFontSize: 10.0,
+  // Profile E: Slim Compact (for dense 42 - 46 lines)
+  static const slimCompact = _PdfSpacingProfile(
+    nameFontSize: 20.5,
+    subTitleFontSize: 9.8,
     contactFontSize: 8.8,
-    headerMarginBottom: 6.5,
-    sectionHeaderFontSize: 10.5,
-    sectionGap: 7.0,
-    sectionHeaderBottomPadding: 2.0,
+    headerMarginBottom: 6.0,
+    sectionHeaderFontSize: 10.2,
+    sectionGap: 6.5,
+    sectionHeaderBottomPadding: 1.6,
     entryTopPadding: 2.0,
-    entryBottomPadding: 0.5,
-    bulletFontSize: 9.2,
-    bulletLineSpacing: 1.22,
-    bulletPaddingBottom: 2.0,
-    bodyFontSize: 9.2,
-    bodyLineSpacing: 1.22,
-    // 0.55 in sides (39.6 pt), 0.45 in top/bottom (32.4 pt)
-    pageMargin: pw.EdgeInsets.symmetric(horizontal: 39.6, vertical: 32.4),
+    entryBottomPadding: 0.6,
+    bulletFontSize: 9.1,
+    bulletLineSpacing: 1.18,
+    bulletPaddingBottom: 1.8,
+    bodyFontSize: 9.1,
+    bodyLineSpacing: 1.18,
+    pageMargin: pw.EdgeInsets.symmetric(horizontal: 36.0, vertical: 28.0),
+  );
+
+  // Profile F: Ultra Compact (safety net for extremely dense 47+ lines)
+  static const ultraCompact = _PdfSpacingProfile(
+    nameFontSize: 19.5,
+    subTitleFontSize: 9.5,
+    contactFontSize: 8.5,
+    headerMarginBottom: 4.5,
+    sectionHeaderFontSize: 9.8,
+    sectionGap: 4.5,
+    sectionHeaderBottomPadding: 1.2,
+    entryTopPadding: 1.2,
+    entryBottomPadding: 0.4,
+    bulletFontSize: 8.6,
+    bulletLineSpacing: 1.15,
+    bulletPaddingBottom: 1.4,
+    bodyFontSize: 8.6,
+    bodyLineSpacing: 1.15,
+    // 0.47 in sides (34 pt), 0.35 in top/bottom (25 pt)
+    pageMargin: pw.EdgeInsets.symmetric(horizontal: 34.0, vertical: 25.0),
   );
 }
 
@@ -292,8 +340,7 @@ class PdfGenerator {
           ).hasMatch(current);
 
       if (!isAlreadyBullet && !isHeaderOrDate) {
-        if (actionVerbRegex.hasMatch(current) ||
-            (inExpOrProj && current.length > 20)) {
+        if (actionVerbRegex.hasMatch(current)) {
           current = '• $current';
         }
       }
@@ -304,37 +351,105 @@ class PdfGenerator {
     // Organize into exact standard section order: Summary -> Skills -> Experience -> Projects -> Education
     final orderedLines = _organizeSectionsInStandardOrder(rawLines, tailored);
 
-    final totalLines = orderedLines.length;
+    final hasProjects = orderedLines.any((l) => _isSectionHeader(l) && l.toUpperCase().contains('PROJECT'));
+    final hasEducation = orderedLines.any((l) => _isSectionHeader(l) && l.toUpperCase().contains('EDUCATION'));
 
     // Profiles tested from most spacious (naturally filling vertical space) to compact
     final profiles = <_PdfSpacingProfile>[
-      if (totalLines <= 24) _PdfSpacingProfile.extraSpacious,
-      if (totalLines <= 30) _PdfSpacingProfile.spacious,
-      if (totalLines <= 36) _PdfSpacingProfile.standard,
+      _PdfSpacingProfile.extraSpacious,
+      _PdfSpacingProfile.spacious,
+      _PdfSpacingProfile.standard,
       _PdfSpacingProfile.compact,
+      _PdfSpacingProfile.slimCompact,
       _PdfSpacingProfile.ultraCompact,
     ];
 
-    Uint8List? bestBytes;
-    for (final profile in profiles) {
-      final doc = _buildDocument(
-        tailored: tailored,
-        rawLines: orderedLines,
-        profile: profile,
-        candidateName: candidateName,
-      );
-      final bytes = await doc.save();
-      final sfDoc = sf.PdfDocument(inputBytes: bytes);
-      final pageCount = sfDoc.pages.count;
-      sfDoc.dispose();
+    Uint8List? selectedBytes;
+    _PdfSpacingProfile? selectedProfile;
+    double? initialLastLineBottom;
 
-      if (!isSinglePage || pageCount == 1) {
-        return bytes;
+    for (final profile in profiles) {
+      try {
+        final doc = _buildDocument(
+          tailored: tailored,
+          rawLines: orderedLines,
+          profile: profile,
+          candidateName: candidateName,
+        );
+        final bytes = await doc.save();
+        final sfDoc = sf.PdfDocument(inputBytes: bytes);
+        final pageCount = sfDoc.pages.count;
+        final page0Text = sf.PdfTextExtractor(sfDoc).extractText(startPageIndex: 0, endPageIndex: 0);
+
+        final includesAllSections = (!hasProjects || page0Text.contains('PROJECTS')) &&
+                                    (!hasEducation || page0Text.contains('EDUCATION'));
+
+        if (!isSinglePage) {
+          sfDoc.dispose();
+          return bytes;
+        }
+
+        if (pageCount == 1 && includesAllSections) {
+          final lines = sf.PdfTextExtractor(sfDoc).extractTextLines();
+          initialLastLineBottom = lines.isNotEmpty ? lines.last.bounds.bottom : null;
+          selectedBytes = bytes;
+          selectedProfile = profile;
+          sfDoc.dispose();
+          break;
+        }
+        sfDoc.dispose();
+      } catch (_) {
+        continue;
       }
-      bestBytes = bytes;
     }
 
-    return bestBytes!;
+    // Dynamic Vertical Expansion: Ensure resume naturally covers the whole A4 page down to the bottom margin
+    if (selectedBytes != null && selectedProfile != null && isSinglePage) {
+      final lastBottom = initialLastLineBottom ?? 650.0;
+      final targetBottom = 841.89 - selectedProfile.pageMargin.bottom - 4.0;
+      final remainingSpace = targetBottom - lastBottom;
+
+      if (remainingSpace > 16.0) {
+        final expansionFractions = [1.0, 0.85, 0.70, 0.55, 0.40, 0.25];
+        for (final frac in expansionFractions) {
+          try {
+            final expandedProfile = selectedProfile.expandWithRemainingSpace(remainingSpace * frac);
+            final expandedDoc = _buildDocument(
+              tailored: tailored,
+              rawLines: orderedLines,
+              profile: expandedProfile,
+              candidateName: candidateName,
+            );
+            final expandedBytes = await expandedDoc.save();
+            final sfDoc = sf.PdfDocument(inputBytes: expandedBytes);
+            final pCount = sfDoc.pages.count;
+            final p0Text = sf.PdfTextExtractor(sfDoc).extractText(startPageIndex: 0, endPageIndex: 0);
+            sfDoc.dispose();
+
+            final includesAll = (!hasProjects || p0Text.contains('PROJECTS')) &&
+                                (!hasEducation || p0Text.contains('EDUCATION'));
+
+            if (pCount == 1 && includesAll) {
+              return expandedBytes;
+            }
+          } catch (_) {
+            continue;
+          }
+        }
+      }
+      return selectedBytes;
+    }
+
+    if (selectedBytes != null) return selectedBytes;
+
+    // Fallback if needed
+    final fallbackDoc = _buildDocument(
+      tailored: tailored,
+      rawLines: orderedLines,
+      profile: _PdfSpacingProfile.ultraCompact,
+      candidateName: candidateName,
+    );
+    return await fallbackDoc.save();
   }
 
   /// Organizes sections in strict executive standard order:
@@ -478,6 +593,11 @@ class PdfGenerator {
   }) {
     final pdf = pw.Document();
     final contentWidgets = <pw.Widget>[];
+
+    void addWidget(pw.Widget w, {bool isSectionGap = false}) {
+      contentWidgets.add(w);
+    }
+
     int index = 0;
 
     // 1. Process Header: Name, Job Title, Contact (Phone, Email), Clickable Links (GitHub, Portfolio, LinkedIn)
@@ -490,7 +610,7 @@ class PdfGenerator {
       name = name.replaceAll(RegExp(r'\s{2,}'), ' ');
 
       // Name: Bold, dark blue, centered, 22-26 pt
-      contentWidgets.add(
+      addWidget(
         pw.Center(
           child: pw.Text(
             name.toUpperCase(),
@@ -503,7 +623,7 @@ class PdfGenerator {
           ),
         ),
       );
-      contentWidgets.add(pw.SizedBox(height: 1.5));
+      addWidget(pw.SizedBox(height: 1.5));
       index++;
 
       // Subtitle / Job Title: Bold, centered, dark blue / slate
@@ -523,7 +643,7 @@ class PdfGenerator {
             .trim();
 
         if (titleText.isNotEmpty) {
-          contentWidgets.add(
+          addWidget(
             pw.Center(
               child: pw.Text(
                 titleText,
@@ -535,7 +655,7 @@ class PdfGenerator {
               ),
             ),
           );
-          contentWidgets.add(pw.SizedBox(height: 1.5));
+          addWidget(pw.SizedBox(height: 1.5));
         }
         index++;
       }
@@ -578,7 +698,7 @@ class PdfGenerator {
 
       if (contactParts.isNotEmpty) {
         final contactText = contactParts.join(' | ');
-        contentWidgets.add(
+        addWidget(
           pw.Center(
             child: pw.Text(
               contactText,
@@ -589,7 +709,7 @@ class PdfGenerator {
             ),
           ),
         );
-        contentWidgets.add(pw.SizedBox(height: 2.0));
+        addWidget(pw.SizedBox(height: 2.0));
       }
 
       // Centered Clickable Links Line (GitHub, Portfolio, LinkedIn)
@@ -624,7 +744,7 @@ class PdfGenerator {
           }
         }
 
-        contentWidgets.add(
+        addWidget(
           pw.Center(
             child: pw.Wrap(
               alignment: pw.WrapAlignment.center,
@@ -633,12 +753,12 @@ class PdfGenerator {
             ),
           ),
         );
-        contentWidgets.add(pw.SizedBox(height: 2.5));
+        addWidget(pw.SizedBox(height: 2.5));
       }
 
       // Divider below header
-      contentWidgets.add(pw.Divider(color: PdfColors.grey300, thickness: 0.6));
-      contentWidgets.add(pw.SizedBox(height: profile.headerMarginBottom));
+      addWidget(pw.Divider(color: PdfColors.grey300, thickness: 0.6));
+      addWidget(pw.SizedBox(height: profile.headerMarginBottom), isSectionGap: true);
     }
 
     // Skip any orphaned summary text that might appear before the first real section header
@@ -671,8 +791,8 @@ class PdfGenerator {
         inExperienceSection =
             headerText.contains('EXPERIENCE') || headerText.contains('WORK');
 
-        contentWidgets.add(pw.SizedBox(height: profile.sectionGap));
-        contentWidgets.add(
+        addWidget(pw.SizedBox(height: profile.sectionGap), isSectionGap: true);
+        addWidget(
           pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
@@ -694,24 +814,82 @@ class PdfGenerator {
             ],
           ),
         );
-        contentWidgets.add(
+        addWidget(
           pw.SizedBox(height: profile.sectionHeaderBottomPadding),
         );
         index++;
         continue;
       }
 
+      final cleanProjectCandidate = line.replaceFirst(RegExp(r'^[\-\*•#\s]+'), '').trim();
+      final actionVerbInClean = RegExp(
+        r'^(?:Built|Developed|Implemented|Integrated|Added|Used|Contributed|Executed|Automated|'
+        r'Visualized|Designed|Created|Architected|Engineered|Configured|Maintained|Optimized|'
+        r'Spearheaded|Streamlined|Collaborated|Conducted|Tested|Managed|Led|Authored|Generated|'
+        r'Deployed|Orchestrated|Secured|Refactored|Enhanced|Accelerated|Formulated|Drafted|'
+        r'Monitored|Supervised|Produced|Established|Published|Trained|Mentored|Assisted|'
+        r'Pioneered|Achieved|Facilitated|Analyzed|Researched|Solved|Coordinated|Directed|'
+        r'Identified|Standardized|Tracked|Validated|Wrote|Programmed|Delivered|Resolved|'
+        r'Prepared|Reviewed|Supported)\b',
+        caseSensitive: false,
+      ).hasMatch(cleanProjectCandidate);
+
+      final isLoneLinkLine = inProjectsSection &&
+          (RegExp(
+            r'^\s*\[?(?:Project|Demo|Link)(?:\s*Link)?(?:\s*↗)?\]?(?:\(https?://[^\)]+\)|https?://\S+)?\s*$',
+            caseSensitive: false,
+          ).hasMatch(cleanProjectCandidate) ||
+              RegExp(r'^\s*https?://\S+\s*$').hasMatch(cleanProjectCandidate));
+
+      final hasProjectLinkIndicator = cleanProjectCandidate.contains('](') ||
+          cleanProjectCandidate.toLowerCase().contains('[project') ||
+          cleanProjectCandidate.toLowerCase().contains('[demo') ||
+          cleanProjectCandidate.toLowerCase().contains('project link') ||
+          cleanProjectCandidate.toLowerCase().contains('demo link') ||
+          RegExp(r'\b(Project|Demo)(?:\s*Link)?(?:\s*↗)?$', caseSensitive: false).hasMatch(cleanProjectCandidate);
+
+      final isProjectHeaderCandidate = inProjectsSection &&
+          !isLoneLinkLine &&
+          !actionVerbInClean &&
+          !cleanProjectCandidate.endsWith('.') &&
+          (hasProjectLinkIndicator ||
+              cleanProjectCandidate.contains('|') ||
+              cleanProjectCandidate.contains(' - ') ||
+              cleanProjectCandidate.contains('–') ||
+              cleanProjectCandidate.length < 100);
+
+      final isJobTitleCandidate = inExperienceSection &&
+          !actionVerbInClean &&
+          !cleanProjectCandidate.endsWith('.') &&
+          !_isSectionHeader(cleanProjectCandidate) &&
+          !_isContactLine(cleanProjectCandidate) &&
+          !_isLinksLine(cleanProjectCandidate) &&
+          cleanProjectCandidate.length < 80 &&
+          !cleanProjectCandidate.toLowerCase().startsWith('http') &&
+          !RegExp(r'^\s*(?:pvt\.?\s*ltd|inc\.?|llc|ltd\.?)\s*$', caseSensitive: false).hasMatch(cleanProjectCandidate);
+
       // Bullet points: drawn with crisp native vector circle and consistent indentation
-      if (line.startsWith('-') ||
-          line.startsWith('*') ||
-          line.startsWith('•')) {
-        final text = line.replaceFirst(RegExp(r'^[\-\*•]\s*'), '').trim();
+      if (!isProjectHeaderCandidate &&
+          !isJobTitleCandidate &&
+          !isLoneLinkLine &&
+          (line.startsWith('-') ||
+              line.startsWith('*') ||
+              line.startsWith('•') ||
+              (inProjectsSection && actionVerbInClean) ||
+              (inExperienceSection && actionVerbInClean))) {
+        var text = line.replaceFirst(RegExp(r'^[\-\*•#\s]+'), '').trim();
+        if (inProjectsSection) {
+          text = text.replaceAll(
+            RegExp(r'(\[(?:Demo|Project|Link)(?:\s*↗)?\]\((https?://[^)]+)\)|\b(?:Project|Demo)(?:\s*Link)?(?:\s*↗)?)$', caseSensitive: false),
+            '',
+          ).trim();
+        }
         if (text.isEmpty) {
           index++;
           continue;
         }
 
-        contentWidgets.add(
+        addWidget(
           pw.Padding(
             padding: pw.EdgeInsets.only(bottom: profile.bulletPaddingBottom),
             child: pw.Row(
@@ -762,7 +940,7 @@ class PdfGenerator {
         final category = skillsLine.substring(0, colonIdx).trim();
         final skills = skillsLine.substring(colonIdx + 1).trim();
 
-        contentWidgets.add(
+        addWidget(
           pw.Padding(
             padding: pw.EdgeInsets.only(bottom: profile.bulletPaddingBottom),
             child: pw.RichText(
@@ -793,24 +971,28 @@ class PdfGenerator {
       }
 
       // If line contains accidental literal $1 $2 artifact, recover real date
-      var processedLine = line;
+      var processedLine = isProjectHeaderCandidate ? cleanProjectCandidate : line;
       if (processedLine.contains(r'$1')) {
         final origMatch = RegExp(
           r'((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*\d{4}\s*[\-–—]\s*(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*\d{4}|Present)|\b\d{4}\s*[\-–—]\s*\d{4}\b)',
           caseSensitive: false,
         ).firstMatch(tailored.originalResume);
-        final realDate = origMatch?.group(1) ?? 'December 2025 – May 2026';
+        final realDate = origMatch?.group(1) ?? '';
         processedLine = processedLine
             .replaceAll(r'$1 $2 - $1 $2', realDate)
-            .replaceAll(r'$1 $2', realDate);
+            .replaceAll(r'$1 $2', realDate)
+            .replaceAll(r'$1', '')
+            .replaceAll(r'$2', '');
       }
 
       // Check if project line with explicit link to let project header handle it
       final isProjectWithExplicitLink = inProjectsSection &&
           (processedLine.contains('](') ||
-              processedLine.toLowerCase().contains('[project]') ||
-              processedLine.toLowerCase().contains('[demo]') ||
-              RegExp(r'\b(Project|Demo)(?:\s*↗)?$', caseSensitive: false).hasMatch(processedLine));
+              processedLine.toLowerCase().contains('[project') ||
+              processedLine.toLowerCase().contains('[demo') ||
+              processedLine.toLowerCase().contains('project link') ||
+              processedLine.toLowerCase().contains('demo link') ||
+              RegExp(r'\b(Project|Demo)(?:\s*Link)?(?:\s*↗)?$', caseSensitive: false).hasMatch(processedLine));
 
       // Company | Date or Degree | Date line (or concatenated title + date)
       final dateMatch = !isProjectWithExplicitLink
@@ -852,11 +1034,11 @@ class PdfGenerator {
           ).firstMatch(tailored.originalResume);
           formattedDate = origMatch != null
               ? origMatch.group(1)!.replaceAll(RegExp(r'\s*[\-–—]\s*'), ' - ')
-              : 'December 2025 - May 2026';
+              : rawDate;
         }
 
         // Job / Degree Title (Bold dark blue) with date aligned to the right
-        contentWidgets.add(
+        addWidget(
           pw.Padding(
             padding: pw.EdgeInsets.only(
               top: profile.entryTopPadding,
@@ -898,13 +1080,13 @@ class PdfGenerator {
           processedLine.contains('College') ||
           processedLine.contains('Clinic') ||
           processedLine.contains('Hospital')) {
-        contentWidgets.add(
+        addWidget(
           pw.Padding(
             padding: pw.EdgeInsets.only(bottom: profile.entryBottomPadding),
             child: _buildRichLineWithLinks(
               processedLine,
               fontSize: profile.bodyFontSize,
-              fontStyle: pw.FontStyle.italic,
+              fontStyle: pw.FontStyle.normal,
               textColor: PdfColors.grey800,
             ),
           ),
@@ -927,7 +1109,12 @@ class PdfGenerator {
               .replaceAll('|', '')
               .trim();
           final cgpa = cgpaMatch.group(0)!.trim();
-          contentWidgets.add(
+          final isDegree = RegExp(
+            r'\b(Bachelor|Master|B\.Tech|M\.Tech|B\.E\.|B\.Sc|M\.Sc|BCA|MCA|MBA|Ph\.D|Diploma|Degree)\b',
+            caseSensitive: false,
+          ).hasMatch(degree);
+
+          addWidget(
             pw.Padding(
               padding: pw.EdgeInsets.only(
                 top: 0.8,
@@ -940,9 +1127,9 @@ class PdfGenerator {
                     child: pw.Text(
                       degree,
                       style: pw.TextStyle(
-                        fontSize: profile.bodyFontSize,
-                        fontStyle: pw.FontStyle.italic,
-                        color: PdfColors.grey800,
+                        fontSize: profile.bodyFontSize + (isDegree ? 0.3 : 0),
+                        fontWeight: isDegree ? pw.FontWeight.bold : pw.FontWeight.normal,
+                        color: isDegree ? const PdfColor.fromInt(0xFF0F2B5C) : PdfColors.grey900,
                       ),
                     ),
                   ),
@@ -963,24 +1150,31 @@ class PdfGenerator {
         }
       }
 
+      if (inProjectsSection && isLoneLinkLine) {
+        index++;
+        continue;
+      }
+
       // In PROJECTS section: ONLY match project title lines
       final hasPipe = processedLine.contains('|');
       final linkMatch = RegExp(
         r'\[([^\]]+)\]\(([^)]+)\)',
       ).firstMatch(processedLine);
       final wordLinkMatch = RegExp(
-        r'\b(Project|Demo)(?:\s*↗)?$',
+        r'\b(Project|Demo)(?:\s*Link)?(?:\s*↗)?$',
         caseSensitive: false,
       ).firstMatch(processedLine);
       final isProjectHeader =
           inProjectsSection &&
-          !processedLine.startsWith('•') &&
-          !processedLine.startsWith('-') &&
-          !processedLine.startsWith('*') &&
-          (hasPipe || linkMatch != null || wordLinkMatch != null);
+          !isLoneLinkLine &&
+          !actionVerbInClean &&
+          (hasPipe || linkMatch != null || wordLinkMatch != null || isProjectHeaderCandidate);
 
       if (isProjectHeader) {
-        String cleanTitle = processedLine.replaceAll(' - ', ' | ');
+        // Strip markdown links and URLs from cleanTitle FIRST before any hyphen manipulation!
+        String cleanTitle = processedLine
+            .replaceFirst(RegExp(r'^[\-\*•#\s]+'), '')
+            .trim();
         String? linkText;
         String? linkUrl;
 
@@ -1011,7 +1205,13 @@ class PdfGenerator {
               break;
             }
           }
-        } else if (hasPipe) {
+        } else if (cleanTitle.toLowerCase().contains('project link')) {
+          linkText = 'Project Link';
+          cleanTitle = cleanTitle.replaceAll(RegExp(r'\s*Project\s*Link\s*', caseSensitive: false), '').trim();
+        } else if (cleanTitle.toLowerCase().contains('demo link')) {
+          linkText = 'Demo Link';
+          cleanTitle = cleanTitle.replaceAll(RegExp(r'\s*Demo\s*Link\s*', caseSensitive: false), '').trim();
+        } else if (hasPipe || isProjectHeaderCandidate) {
           final pName = cleanTitle.split('|').first.trim().toLowerCase();
           final origMatches = RegExp(
             r'\[?(?:Project|Demo)\]?\((https?://[^\)]+)\)',
@@ -1035,6 +1235,38 @@ class PdfGenerator {
           }
         }
 
+        // Lookahead: if no link found on this line, check if the next line is a lone link
+        if (linkText == null && linkUrl == null && index + 1 < rawLines.length) {
+          final nextLine = rawLines[index + 1].trim();
+          final nextLinkMatch = RegExp(r'\[([^\]]+)\]\(([^)]+)\)').firstMatch(nextLine);
+          final nextUrlMatch = RegExp(r'^https?://\S+$').firstMatch(nextLine);
+          if (nextLinkMatch != null) {
+            linkText = nextLinkMatch.group(1)!.replaceAll('↗', '').trim();
+            linkUrl = nextLinkMatch.group(2)!.trim();
+            index++; // consume next line
+          } else if (nextUrlMatch != null) {
+            linkText = 'Project';
+            linkUrl = nextUrlMatch.group(0)!.trim();
+            index++; // consume next line
+          }
+        }
+
+        // Remove any remaining raw markdown link or URL patterns from cleanTitle
+        cleanTitle = cleanTitle.replaceAll(RegExp(r'\[[^\]]*\]\([^)]*\)'), '').trim();
+        cleanTitle = cleanTitle.replaceAll(RegExp(r'https?://\S+'), '').trim();
+
+        // Remove trailing/leading pipes and extra spaces
+        cleanTitle = cleanTitle.replaceAll(RegExp(r'^\s*\|\s*|\s*\|\s*$'), '').trim();
+
+        // Unjam hyphenated project technology suffixes: e.g. "Dashboard-Tableau" -> "Dashboard | Tableau"
+        cleanTitle = cleanTitle.replaceAllMapped(
+          RegExp(r'\b(Dashboard|Analysis|Store|App|Project|Platform)-(Tableau|Power\s*BI|PowerBI|Excel|Flutter|React|Python|Java|[A-Z][a-z]+)\b'),
+          (m) => '${m.group(1)} | ${m.group(2)}',
+        );
+
+        // Only replace spaced hyphens: e.g. "Project Name - Flutter" -> "Project Name | Flutter"
+        cleanTitle = cleanTitle.replaceAllMapped(RegExp(r'(?<=\S)\s+-\s+(?=\S)'), (m) => ' | ').trim();
+
         final projectDateMatch = RegExp(
           r'((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*\d{4}\s*[\-–—]\s*(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*\d{4}|Present)|\b\d{4}\s*[\-–—]\s*(?:\d{4}|Present)\b|\b20\d{2}\b)',
           caseSensitive: false,
@@ -1049,7 +1281,12 @@ class PdfGenerator {
         cleanTitle = cleanTitle.replaceAll(RegExp(r'\s*\|\s*$'), '').trim();
         cleanTitle = PdfExtractor.fixProjectContext(cleanTitle);
 
-        contentWidgets.add(
+        if (cleanTitle.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').isEmpty) {
+          index++;
+          continue;
+        }
+
+        addWidget(
           pw.Padding(
             padding: pw.EdgeInsets.only(
               top: profile.entryTopPadding,
@@ -1060,31 +1297,53 @@ class PdfGenerator {
               crossAxisAlignment: pw.CrossAxisAlignment.center,
               children: [
                 pw.Expanded(
-                  child: pw.Text(
-                    cleanTitle,
-                    style: pw.TextStyle(
-                      fontSize: profile.bodyFontSize + 0.4,
-                      fontWeight: pw.FontWeight.bold,
-                      color: const PdfColor.fromInt(0xFF0F2B5C), // Bold dark blue
-                    ),
-                  ),
+                  child: linkUrl != null
+                      ? pw.UrlLink(
+                          destination: linkUrl,
+                          child: pw.Text(
+                            cleanTitle,
+                            style: pw.TextStyle(
+                              fontSize: profile.bodyFontSize + 0.4,
+                              fontWeight: pw.FontWeight.bold,
+                              color: const PdfColor.fromInt(0xFF0F2B5C), // Bold dark blue
+                            ),
+                          ),
+                        )
+                      : pw.Text(
+                          cleanTitle,
+                          style: pw.TextStyle(
+                            fontSize: profile.bodyFontSize + 0.4,
+                            fontWeight: pw.FontWeight.bold,
+                            color: const PdfColor.fromInt(0xFF0F2B5C), // Bold dark blue
+                          ),
+                        ),
                 ),
                 pw.Row(
                   mainAxisSize: pw.MainAxisSize.min,
                   children: [
-                    if (linkText != null && linkUrl != null) ...[
-                      pw.UrlLink(
-                        destination: linkUrl,
-                        child: pw.Text(
+                    if (linkText != null) ...[
+                      if (linkUrl != null)
+                        pw.UrlLink(
+                          destination: linkUrl,
+                          child: pw.Text(
+                            linkText,
+                            style: pw.TextStyle(
+                              fontSize: profile.bodyFontSize,
+                              fontWeight: pw.FontWeight.bold,
+                              color: const PdfColor.fromInt(0xFF1D4ED8),
+                              decoration: pw.TextDecoration.underline,
+                            ),
+                          ),
+                        )
+                      else
+                        pw.Text(
                           linkText,
                           style: pw.TextStyle(
                             fontSize: profile.bodyFontSize,
                             fontWeight: pw.FontWeight.bold,
                             color: const PdfColor.fromInt(0xFF1D4ED8),
-                            decoration: pw.TextDecoration.underline,
                           ),
                         ),
-                      ),
                       if (projectDate != null) pw.SizedBox(width: 8),
                     ],
                     if (projectDate != null)
@@ -1107,21 +1366,21 @@ class PdfGenerator {
       }
 
       // General body text (wraps any embedded markdown links cleanly!)
-      final isTitle =
-          !inSkillsSection &&
-          !inProjectsSection &&
-          !processedLine.contains('.') &&
-          !processedLine.contains(',') &&
-          processedLine.length < 40 &&
-          (processedLine.toLowerCase().contains('developer') ||
-              processedLine.toLowerCase().contains('engineer') ||
-              processedLine.toLowerCase().contains('bachelor') ||
-              processedLine.toLowerCase().contains('master') ||
-              processedLine.toLowerCase().contains('b.tech'));
+      final isTitle = isJobTitleCandidate ||
+          (!inSkillsSection &&
+              !inProjectsSection &&
+              !processedLine.endsWith('.') &&
+              !actionVerbInClean &&
+              processedLine.length < 80);
 
       // If in Experience or Projects and line is an accomplishment/bullet, render with bullet point row and hanging indent!
       if ((inExperienceSection || inProjectsSection) &&
           !isTitle &&
+          !isProjectHeaderCandidate &&
+          (processedLine.startsWith('•') ||
+              processedLine.startsWith('-') ||
+              processedLine.startsWith('*') ||
+              actionVerbInClean) &&
           processedLine.length > 15 &&
           !processedLine.contains('|') &&
           !processedLine.contains('[Project]') &&
@@ -1129,7 +1388,7 @@ class PdfGenerator {
         final bulletText = processedLine
             .replaceFirst(RegExp(r'^[\-\*•]\s*'), '')
             .trim();
-        contentWidgets.add(
+        addWidget(
           pw.Padding(
             padding: pw.EdgeInsets.only(bottom: profile.bulletPaddingBottom),
             child: pw.Row(
@@ -1160,7 +1419,7 @@ class PdfGenerator {
         continue;
       }
 
-      contentWidgets.add(
+      addWidget(
         pw.Padding(
           padding: pw.EdgeInsets.only(
             top: isTitle ? profile.entryTopPadding : 0,
@@ -1200,10 +1459,18 @@ class PdfGenerator {
       candidateName: candidateName,
     );
 
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => bytes,
-      name: '${candidateName.replaceAll(' ', '_')}_Tailored_Resume.pdf',
-    );
+    try {
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => bytes,
+        name: '${candidateName.replaceAll(' ', '_')}_Tailored_Resume.pdf',
+      );
+    } catch (_) {
+      // In web browsers with cross-origin iframe restrictions, fallback to share/download
+      await Printing.sharePdf(
+        bytes: bytes,
+        filename: '${candidateName.replaceAll(' ', '_')}_Tailored_Resume.pdf',
+      );
+    }
   }
 
   static Future<void> downloadPdf({

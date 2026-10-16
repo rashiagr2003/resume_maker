@@ -99,6 +99,10 @@ class ResumeInputNotifier extends StateNotifier<ResumeInput> {
     state = state.copyWith(jobDescription: jd);
   }
 
+  void updateJdText(String jd) {
+    updateJobDescription(jd);
+  }
+
   void updateResumeText(String resume) {
     state = state.copyWith(resumeText: resume);
   }

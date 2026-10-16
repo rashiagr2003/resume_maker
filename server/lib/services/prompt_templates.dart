@@ -120,9 +120,13 @@ CORE OPTIMIZATION & ATS SPECIFICATIONS:
    - Categorize skills into relevant groups (e.g. Technical Skills, Tools & Platforms, Methodologies & Operations, Domain Competencies).
    - Never invent skills, tools, or proficiency levels.
 
-3. IMPROVE CONTENT & ADAPTIVE ORDERING:
-   - Rewrite the Professional Summary to communicate background, strengths, qualifications, and target career direction concisely.
-   - Use clear, action-oriented verbs and quantify achievements only when supported by candidate data.
+3. JD-ALIGNED PROFESSIONAL SUMMARY OPTIMIZATION:
+   - Rewrite the PROFESSIONAL SUMMARY so it directly targets the provided Job Description (JD):
+     • Title & Identity: Open by positioning the candidate with the target Job Title or exact domain identity required by the JD (e.g. "Results-driven [Target Role]..."), grounded in the candidate's authentic experience.
+     • Mirror JD Keywords: Seamlessly weave in 3–4 high-priority keywords, tools, methodologies, and core competencies explicitly emphasized in the JD that match the candidate's substantiated experience or verified skills.
+     • Business Impact & Problem Solving: Articulate how the candidate's unique expertise addresses the core challenges, project scope, or goals mentioned in the JD (e.g. driving operational scale, optimizing client pipelines, automating QA workflows, building scalable software).
+     • Market/Location Alignment: If applicable, reflect alignment with the target location or market (e.g. aligned with Remote / $targetCity market).
+     • Executive Brevity: Keep strictly to 3–4 punchy, high-impact sentences (50–75 words). Never use first-person pronouns ("I", "me", "my"). Eliminate empty buzzwords like "hardworking" or "quick learner"—use concrete technical, domain, and action-oriented vocabulary.
    - Adapt section order to career level:
      • Students / Freshers / Transitioners: Summary → Skills → Education → Projects / Academic Experience → Professional Experience
      • Experienced Professionals: Summary → Core Competencies / Skills → Professional Experience → Projects → Education & Certifications
@@ -171,6 +175,58 @@ Candidate Original Resume:
 """
 $resumeText
 """
+''';
+  }
+
+  /// Dedicated prompt to generate a high-impact, JD-tailored Professional Summary
+  static String buildProfessionalSummaryPrompt({
+    required String resumeText,
+    required String jobDescription,
+    String? targetRole,
+    String? targetCity,
+    List<String>? verifiedSkills,
+  }) {
+    final skillsText = verifiedSkills != null && verifiedSkills.isNotEmpty
+        ? 'Key Verified Skills to Highlight: ${verifiedSkills.join(', ')}'
+        : '';
+    final roleText = targetRole != null && targetRole.isNotEmpty
+        ? 'Target Role: $targetRole'
+        : 'Extract target role directly from the Job Description';
+    final cityText = targetCity != null && targetCity.isNotEmpty
+        ? 'Target Location/Market: $targetCity'
+        : '';
+
+    return '''
+You are an executive resume writer and ATS optimization specialist.
+Your task is to write a compelling, tailored, ATS-optimized PROFESSIONAL SUMMARY for a candidate applying to a specific Job Description (JD).
+
+GUIDELINES FOR THE SUMMARY:
+1. Target Role & Hook: Open with the candidate's professional identity aligned with the target job title from the JD (e.g., "Results-oriented [Target Job Title] with [X] years of experience in...").
+2. Core Competencies from JD: Incorporate 3–4 high-priority technical tools, domain competencies, and methodologies explicitly highlighted in the JD that match the candidate's actual background.
+3. Quantifiable Impact & Value: Highlight the candidate's proven ability to solve key problems mentioned in the JD (e.g., accelerating delivery, improving quality, optimizing pipelines, leading cross-functional teams).
+4. Market Alignment: Naturally reflect alignment with the target location or working arrangement (e.g., Remote / $targetCity).
+5. Strict Length & Tone:
+   - Exactly 3 to 4 concise sentences (50–75 words).
+   - High-impact, executive tone.
+   - Zero first-person pronouns ("I", "my", "we").
+   - Zero generic fluff (avoid "hardworking", "passionate", "detail-oriented team player"). Use concrete industry terminology.
+   - Factual integrity: NEVER invent employers, years, or qualifications not found in the resume.
+
+$roleText
+$cityText
+$skillsText
+
+Job Description:
+"""
+$jobDescription
+"""
+
+Candidate's Background / Original Resume:
+"""
+$resumeText
+"""
+
+Return ONLY the tailored summary text. Do not include quotes, markdown formatting, or preamble.
 ''';
   }
 }

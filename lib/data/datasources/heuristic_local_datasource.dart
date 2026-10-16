@@ -602,24 +602,27 @@ class HeuristicLocalDataSource {
             .join(', ');
 
         String generatedSummary;
-        if (domain.contains('Recruitment') || domain.contains('HR')) {
+        if (domain.contains('Dynamics') || domain.contains('CRM') || domain.contains('Salesforce') || targetRole.contains('Dynamics') || targetRole.contains('Salesforce')) {
           generatedSummary =
-              'Dynamic, results-driven $targetRole aligned with the $targetCity market, specializing in candidate sourcing, screening, end-to-end recruitment lifecycle, and client outreach. Skilled in ${keyCompetencies.isNotEmpty ? keyCompetencies : "talent acquisition, pipeline management, and client communication"}, with a demonstrated track record of coordinating high-volume interviews and meeting aggressive staffing goals.';
+              'Solutions-driven $targetRole aligned with the $targetCity market, specializing in CRM architecture, business process optimization, and enterprise client integrations. Proven expertise in ${keyCompetencies.isNotEmpty ? keyCompetencies : "Salesforce, enterprise automation, and client pipeline management"}, with a demonstrated track record of aligning technical deliverables with operational business goals. Adept at driving stakeholder engagement, streamlining workflows, and delivering high-impact solutions.';
+        } else if (domain.contains('Recruitment') || domain.contains('HR')) {
+          generatedSummary =
+              'Dynamic, performance-focused $targetRole aligned with the $targetCity market, specializing in full-cycle recruitment, candidate sourcing, talent screening, and stakeholder management. Proficient in ${keyCompetencies.isNotEmpty ? keyCompetencies : "talent acquisition, pipeline management, and client communication"}, with a demonstrated track record of coordinating high-volume deliverables and meeting aggressive hiring targets.';
         } else if (domain.contains('QA') || domain.contains('Testing')) {
           generatedSummary =
-              'Detail-oriented $targetRole aligned with the $targetCity market, specializing in test automation, bug life-cycle management, and cross-platform verification matching requirements in ${keyCompetencies.isNotEmpty ? keyCompetencies : "manual and automated QA"}. Proven track record of improving release stability and software quality.';
-        } else if (domain.contains('Sales') || domain.contains('Marketing')) {
-          generatedSummary =
-              'High-performing, target-oriented $targetRole aligned with the $targetCity market, with proven expertise in ${keyCompetencies.isNotEmpty ? keyCompetencies : "lead generation, outreach, and client relationship management"}. Adept at managing client pipelines, driving engagement, and exceeding operational goals.';
+              'Detail-oriented $targetRole aligned with the $targetCity market, specializing in robust automation frameworks, defect life-cycle management, and cross-platform verification matching requirements in ${keyCompetencies.isNotEmpty ? keyCompetencies : "manual and automated QA"}. Demonstrated success in enhancing test coverage, reducing regression cycles, and driving product quality across production environments.';
         } else if (domain.contains('Data')) {
           generatedSummary =
-              'Analytical and detail-oriented $targetRole aligned with the $targetCity market, specializing in data analysis, reporting, and translating complex data into actionable business insights using ${keyCompetencies.isNotEmpty ? keyCompetencies : "modern analytics tools"}.';
-        } else if (domain.contains('Software') || domain.contains('IT')) {
+              'Analytical and metrics-driven $targetRole aligned with the $targetCity market, specializing in data visualization, quantitative reporting, and transforming complex datasets into actionable business intelligence using ${keyCompetencies.isNotEmpty ? keyCompetencies : "modern analytics tools"}. Adept at designing executive KPI dashboards that drive strategic decision-making and operational performance.';
+        } else if (domain.contains('Software') || domain.contains('IT') || domain.contains('Mobile')) {
           generatedSummary =
-              'Results-driven $targetRole aligned with the $targetCity market, specializing in delivering scalable, high-performance solutions matching requirements in ${keyCompetencies.isNotEmpty ? keyCompetencies : "modern software engineering"}. Demonstrated success driving product excellence and collaborative development.';
+              'Results-driven $targetRole aligned with the $targetCity market, specializing in delivering scalable, high-performance applications matching requirements in ${keyCompetencies.isNotEmpty ? keyCompetencies : "modern software engineering and API integration"}. Demonstrated success driving product excellence, accelerating development cycles, and fostering collaborative cross-functional delivery.';
+        } else if (domain.contains('Sales') || domain.contains('Marketing')) {
+          generatedSummary =
+              'High-performing, strategic $targetRole aligned with the $targetCity market, with proven expertise in ${keyCompetencies.isNotEmpty ? keyCompetencies : "lead generation, outreach, and client relationship management"}. Adept at managing client pipelines, driving engagement, and exceeding operational revenue goals through structured consultation and relationship building.';
         } else {
           generatedSummary =
-              'Results-driven professional aligned with the $targetCity market, leveraging proven competencies in ${keyCompetencies.isNotEmpty ? keyCompetencies : "strategic execution and operational efficiency"} to drive measurable outcomes and organizational success.';
+              'Strategic and results-driven $targetRole aligned with the $targetCity market, leveraging proven competencies in ${keyCompetencies.isNotEmpty ? keyCompetencies : "strategic execution and operational efficiency"} to drive measurable outcomes and organizational success.';
         }
 
         updatedLines.add(generatedSummary);
@@ -828,8 +831,26 @@ class HeuristicLocalDataSource {
                   : <String>[]))
           .take(3)
           .join(', ');
-      final generatedSummary =
-          'Dynamic, results-driven $targetRole aligned with the $targetCity market, specializing in candidate sourcing, screening, and end-to-end recruitment lifecycle. Skilled in ${keyCompetencies.isNotEmpty ? keyCompetencies : "core domain competencies"}, with a demonstrated track record of coordinating high-volume deliverables and meeting aggressive staffing goals.';
+      String generatedSummary;
+      if (domain.contains('Dynamics') || domain.contains('CRM') || domain.contains('Salesforce') || targetRole.contains('Dynamics') || targetRole.contains('Salesforce')) {
+        generatedSummary =
+            'Solutions-driven $targetRole aligned with the $targetCity market, specializing in CRM architecture, business process optimization, and enterprise client integrations. Proven expertise in ${keyCompetencies.isNotEmpty ? keyCompetencies : "Salesforce, enterprise automation, and client pipeline management"}, with a demonstrated track record of aligning technical deliverables with operational business goals. Adept at driving stakeholder engagement, streamlining workflows, and delivering high-impact solutions.';
+      } else if (domain.contains('Recruitment') || domain.contains('HR')) {
+        generatedSummary =
+            'Dynamic, performance-focused $targetRole aligned with the $targetCity market, specializing in full-cycle recruitment, candidate sourcing, talent screening, and stakeholder management. Proficient in ${keyCompetencies.isNotEmpty ? keyCompetencies : "talent acquisition, pipeline management, and client communication"}, with a demonstrated track record of coordinating high-volume deliverables and meeting aggressive hiring targets.';
+      } else if (domain.contains('QA') || domain.contains('Testing')) {
+        generatedSummary =
+            'Detail-oriented $targetRole aligned with the $targetCity market, specializing in robust automation frameworks, defect life-cycle management, and cross-platform verification matching requirements in ${keyCompetencies.isNotEmpty ? keyCompetencies : "manual and automated QA"}. Demonstrated success in enhancing test coverage, reducing regression cycles, and driving product quality across production environments.';
+      } else if (domain.contains('Data')) {
+        generatedSummary =
+            'Analytical and metrics-driven $targetRole aligned with the $targetCity market, specializing in data visualization, quantitative reporting, and transforming complex datasets into actionable business intelligence using ${keyCompetencies.isNotEmpty ? keyCompetencies : "modern analytics tools"}. Adept at designing executive KPI dashboards that drive strategic decision-making and operational performance.';
+      } else if (domain.contains('Software') || domain.contains('IT') || domain.contains('Mobile')) {
+        generatedSummary =
+            'Results-driven $targetRole aligned with the $targetCity market, specializing in delivering scalable, high-performance applications matching requirements in ${keyCompetencies.isNotEmpty ? keyCompetencies : "modern software engineering and API integration"}. Demonstrated track record of accelerating development cycles, architecting maintainable codebases, and fostering collaborative cross-functional delivery.';
+      } else {
+        generatedSummary =
+            'Strategic and results-driven $targetRole aligned with the $targetCity market, with proven expertise in ${keyCompetencies.isNotEmpty ? keyCompetencies : "strategic execution, project delivery, and workflow optimization"}. Demonstrated track record of managing high-impact deliverables, optimizing operational workflows, and consistently exceeding stakeholder goals.';
+      }
       updatedLines.insert(insertIdx++, '');
       updatedLines.insert(insertIdx++, '## PROFESSIONAL SUMMARY');
       updatedLines.insert(insertIdx++, generatedSummary);

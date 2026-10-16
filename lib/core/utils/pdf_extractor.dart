@@ -283,139 +283,228 @@ class PdfExtractor {
       RegExp(r'\b([a-zA-Z]{2,})-\s+([a-z]{2,})\b'),
       (m) => '${m.group(1)}${m.group(2)}',
     );
-
-    // Unjam education strings: e.g. "B.TechinInformationTechnology2021-2025"
-    result = result.replaceAll(
-      'B.TechinInformationTechnology2021-2025',
-      'B.Tech in Information Technology | 2021 - 2025',
-    );
-    result = result.replaceAll(
-      'B.TechinInformationTechnology',
-      'B.Tech in Information Technology',
-    );
+    // Unjam project title hyphen before pipe BEFORE token protection: e.g. "CareerAssistant-Career&ProductivityApp |" -> "CareerAssistant | Career&ProductivityApp |"
     result = result.replaceAllMapped(
-      RegExp(r'\b(B\.Tech|M\.Tech|B\.E\.|B\.Sc|M\.Sc|BCA|MCA|MBA)in([A-Z])', caseSensitive: false),
-      (m) => '${m.group(1)} in ${m.group(2)}',
-    );
-    result = result.replaceAllMapped(
-      RegExp(r'\bin([A-Z][a-z]+)'),
-      (m) => 'in ${m.group(1)}',
-    );
-
-    // Unjam job role headings
-    result = result.replaceAll('MobileApplicationDeveloper', 'Mobile Application Developer');
-    result = result.replaceAll('FlutterDeveloperIntern', 'Flutter Developer Intern');
-    result = result.replaceAll('SoftwareEngineerIntern', 'Software Engineer Intern');
-    result = result.replaceAll('ApplicationDeveloper', 'Application Developer');
-    result = result.replaceAll('DeveloperIntern', 'Developer Intern');
-    result = result.replaceAll('QAEngineer', 'QA Engineer');
-    result = result.replaceAll('ITRecruiter', 'IT Recruiter');
-
-    // Unjam project titles and analytics dashboards
-    result = result.replaceAll('HRAnalytics Dashboard-Tableau', 'HR Analytics Dashboard | Tableau');
-    result = result.replaceAll('HRAnalytics Dashboard - Tableau', 'HR Analytics Dashboard | Tableau');
-    result = result.replaceAll('HRAnalytics', 'HR Analytics');
-    result = result.replaceAll('E-CommerceSalesAnalysis Dashboard-PowerBI', 'E-Commerce Sales Analysis Dashboard | Power BI');
-    result = result.replaceAll('E-CommerceSalesAnalysis Dashboard - PowerBI', 'E-Commerce Sales Analysis Dashboard | Power BI');
-    result = result.replaceAll('E-CommerceSalesAnalysis', 'E-Commerce Sales Analysis');
-    result = result.replaceAll('VrindaStoreSalesAnalysis-Excel', 'Vrinda Store Sales Analysis | Excel');
-    result = result.replaceAll('VrindaStoreSalesAnalysis - Excel', 'Vrinda Store Sales Analysis | Excel');
-    result = result.replaceAll('VrindaStoreSalesAnalysis', 'Vrinda Store Sales Analysis');
-    result = result.replaceAll('SalesAnalysis', 'Sales Analysis');
-    result = result.replaceAll('StoreSales', 'Store Sales');
-    result = result.replaceAll('VrindaStore', 'Vrinda Store');
-    result = result.replaceAll('PowerBI', 'Power BI');
-    result = result.replaceAll('InformationTechnology', 'Information Technology');
-    result = result.replaceAll('ComputerScience', 'Computer Science');
-
-    // Unjam hyphenated dashboard titles: "Dashboard-Tableau" -> "Dashboard | Tableau"
-    result = result.replaceAllMapped(
-      RegExp(r'\b(Dashboard|Analysis|Store)-(Tableau|PowerBI|Power\s*BI|Excel)\b', caseSensitive: false),
-      (m) => '${m.group(1)} | ${m.group(2)}',
-    );
-
-    // Unjam letters jammed to 4-digit years: e.g. "Technology2021" -> "Technology 2021"
-    // BUT NEVER touch URLs (https://..., github.com/..., etc.) or email addresses
-    result = result.replaceAllMapped(
-      RegExp(
-        r'(https?://[^\s\)\],]+|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|(?:github|linkedin)\.com/[^\s\)\],]+)|([a-zA-Z])(\d{4})\b',
-        caseSensitive: false,
-      ),
+      RegExp(r'(\b[A-Za-z0-9\s]+)-([A-Z][a-zA-Z0-9\s&\-]+?)(?=\s*\|)'),
       (m) {
-        if (m.group(1) != null) {
-          return m.group(1)!;
+        if (m.group(1)!.trim().length <= 1 || m.group(1)!.trim().toLowerCase() == 'e') {
+          return m.group(0)!;
         }
-        return '${m.group(2)} ${m.group(3)}';
+        return '${m.group(1)} | ${m.group(2)}';
       },
     );
 
-    // Strip any accidental whitespace inside markdown link URLs
+    // Fix PDF font kerning split syllables: e.g. "Programm ing" -> "Programming", "Test ing" -> "Testing"
     result = result.replaceAllMapped(
-      RegExp(r'\[([^\]]+)\]\(([^)]+)\)'),
-      (m) => '[${m.group(1)}](${m.group(2)!.replaceAll(RegExp(r'\s+'), '')})',
+      RegExp(r'\b([A-Za-z]+)\s+(ing)\b'),
+      (m) => '${m.group(1)}ing',
+    );
+    result = result.replaceAllMapped(
+      RegExp(r'\bAu\s+(tomation|tomated|tomatic)\b', caseSensitive: false),
+      (m) => 'Au${m.group(1)}',
+    );
+    result = result.replaceAllMapped(
+      RegExp(r'\bIn\s+formation\b', caseSensitive: false),
+      (m) => 'Information',
+    );
+    result = result.replaceAllMapped(
+      RegExp(r'\b([A-Za-z]{3,})\s+(tor|tors)\b', caseSensitive: false),
+      (m) => '${m.group(1)}${m.group(2)}',
+    );
+    result = result.replaceAllMapped(
+      RegExp(r'\bPlat\s+form\b', caseSensitive: false),
+      (m) => 'Platform',
+    );
+    result = result.replaceAllMapped(
+      RegExp(r'\bBeg\s+inner\b', caseSensitive: false),
+      (m) => 'Beginner',
+    );
+    result = result.replaceAllMapped(
+      RegExp(r'\b([A-Za-z]{3,})\s+(tion|tions)\b', caseSensitive: false),
+      (m) => '${m.group(1)}${m.group(2)}',
+    );
+    result = result.replaceAllMapped(
+      RegExp(r'\b([A-Za-z]{3,})\s+(ment|ments)\b', caseSensitive: false),
+      (m) => '${m.group(1)}${m.group(2)}',
     );
 
-    // Unjam jammed 4-digit date ranges: e.g. "2021-2025" -> "2021 - 2025"
+    // Universal dynamic token protection for URLs, emails, markdown links, and standard tech terms
+    final preservedTokens = <String>[];
+    String protect(String pattern, String str) {
+      return str.replaceAllMapped(RegExp(pattern), (m) {
+        preservedTokens.add(m.group(0)!);
+        return '___PRESERVED_${preservedTokens.length - 1}___';
+      });
+    }
+
+    // 1. Protect markdown links FIRST (so inner URLs are not split)
+    result = protect(r'\[[^\]]+\]\([^)]+\)', result);
+    // 2. Protect standalone URLs and emails
+    result = protect(r'https?://[^\s\)\],]+', result);
+    result = protect(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', result);
+
+    // 3. Protect standard tech words with internal capitals (preserve exact casing)
+    final techTerms = [
+      'JavaScript', 'TypeScript', 'PostgreSQL', 'MongoDB', 'GraphQL',
+      'FastAPI', 'DevOps', 'PyTorch', 'TensorFlow', 'PowerBI',
+      'WebSockets', 'GitHub', 'LinkedIn', 'GitLab', 'iOS', 'macOS',
+      'MySQL', 'TestNG', 'WebDriver', 'FitFlow', 'SharedPreferences',
+      'BookEHealth'
+    ];
+    for (final term in techTerms) {
+      result = protect(r'\b' + RegExp.escape(term) + r'\b', result);
+    }
+
+    // 4. Dynamic Parentheses & Punctuation Unjamming
+    // e.g. "SoftwareDeveloper(Full-Time)" -> "SoftwareDeveloper (Full-Time)"
+    result = result.replaceAllMapped(
+      RegExp(r'([a-zA-Z0-9])\('),
+      (m) => '${m.group(1)} (',
+    );
+    result = result.replaceAllMapped(
+      RegExp(r'\)([a-zA-Z0-9])'),
+      (m) => ') ${m.group(1)}',
+    );
+    result = result.replaceAllMapped(
+      RegExp(r'([a-zA-Z])&([a-zA-Z])'),
+      (m) => '${m.group(1)} & ${m.group(2)}',
+    );
+    result = result.replaceAllMapped(
+      RegExp(r'([a-zA-Z]):([a-zA-Z])'),
+      (m) => '${m.group(1)}: ${m.group(2)}',
+    );
+    result = result.replaceAllMapped(
+      RegExp(r'([a-zA-Z0-9_]),([a-zA-Z0-9_])'),
+      (m) => '${m.group(1)}, ${m.group(2)}',
+    );
+
+    // 4.2 Unjam mashed sentence action verbs: e.g. "BuiltanAI" -> "Built an AI"
+    result = result.replaceAllMapped(
+      RegExp(r'\b(Built|Developed|Created|Designed)an(AI|[A-Z][a-z]+)'),
+      (m) => '${m.group(1)} an ${m.group(2)}',
+    );
+    // Unjam mashed app descriptions: e.g. "learningappusing" -> "learning app using"
+    result = result.replaceAllMapped(
+      RegExp(r'(powered)\s*(learning)', caseSensitive: false),
+      (m) => '${m.group(1)} ${m.group(2)}',
+    );
+    result = result.replaceAllMapped(
+      RegExp(r'(learning)\s*(app)\s*(using)', caseSensitive: false),
+      (m) => '${m.group(1)} ${m.group(2)} ${m.group(3)}',
+    );
+    result = result.replaceAllMapped(
+      RegExp(r'\band([A-Z][a-z]+)'),
+      (m) => 'and ${m.group(1)}',
+    );
+    result = result.replaceAllMapped(
+      RegExp(r"'s\s*([A-Z])"),
+      (m) => "'s ${m.group(1)}",
+    );
+    result = result.replaceAllMapped(
+      RegExp(r'Llama4Scout', caseSensitive: false),
+      (m) => 'Llama 4 Scout',
+    );
+    result = result.replaceAllMapped(
+      RegExp(r'(\b[A-Za-z]+)(\d+)([A-Z][a-z]+)'),
+      (m) => '${m.group(1)} ${m.group(2)} ${m.group(3)}',
+    );
+    result = result.replaceAllMapped(
+      RegExp(r'(Scout)\s*(Vision)', caseSensitive: false),
+      (m) => '${m.group(1)} ${m.group(2)}',
+    );
+    result = result.replaceAllMapped(
+      RegExp(r'(Vision)\s*(for)\s*(image)', caseSensitive: false),
+      (m) => '${m.group(1)} ${m.group(2)} ${m.group(3)}',
+    );
+    result = result.replaceAllMapped(
+      RegExp(r'([a-z]+-based)\s*([a-z]+)'),
+      (m) => '${m.group(1)} ${m.group(2)}',
+    );
+
+    result = result.replaceAllMapped(
+      RegExp(r'\b([A-Za-z]{3,})(App)\b'),
+      (m) => '${m.group(1)} ${m.group(2)}',
+    );
+    result = result.replaceAllMapped(
+      RegExp(r'\b([A-Z][a-z]{3,})(Kids|Assistant)\b'),
+      (m) => '${m.group(1)} ${m.group(2)}',
+    );
+
+    // 5. Dynamic CamelCase Word Splitting for jammed words (min 8 chars)
+    // e.g. "HRAnalytics" -> "HR Analytics"
+    // e.g. "ManipalUniversityJaipur" -> "Manipal University Jaipur"
+    // e.g. "SoftwareDeveloper" -> "Software Developer"
+    const preservedCamelWords = {
+      'HealthPulse',
+      'ShopEase',
+      'CloudTask',
+      'DevConnect',
+      'CryptoTrack',
+      'CoinGecko',
+      'FitFlow',
+      'PostgreSQL',
+      'MySQL',
+      'JavaScript',
+      'TypeScript',
+      'DevOps',
+      'TestNG',
+      'WebDriver',
+      'WebRTC',
+      'GraphQL',
+      'MongoDB',
+    };
+
+    result = result.replaceAllMapped(
+      RegExp(r'\b([A-Za-z]{8,})\b'),
+      (m) {
+        final word = m.group(1)!;
+        if (preservedCamelWords.contains(word)) return word;
+        return word.replaceAllMapped(
+          RegExp(r'([a-z])([A-Z])|([A-Z]{2,})([A-Z][a-z]+)'),
+          (inner) => inner.group(1) != null
+              ? '${inner.group(1)} ${inner.group(2)}'
+              : '${inner.group(3)} ${inner.group(4)}',
+        );
+      },
+    );
+
+    // 6. Dynamic Letter-to-Year & Year-to-Letter unjamming
+    // e.g. "Technology2021" -> "Technology 2021"
+    // e.g. "2025Bachelor" -> "2025 Bachelor"
+    result = result.replaceAllMapped(
+      RegExp(r'([a-zA-Z])(\d{4})\b'),
+      (m) => '${m.group(1)} ${m.group(2)}',
+    );
+    result = result.replaceAllMapped(
+      RegExp(r'\b(\d{4})([a-zA-Z])'),
+      (m) => '${m.group(1)} ${m.group(2)}',
+    );
     result = result.replaceAllMapped(
       RegExp(r'(\d{4})\s*[-–—]\s*(\d{4})'),
       (m) => '${m.group(1)} - ${m.group(2)}',
     );
 
-    // 2. Unjam project titles
-    result = result.replaceAll('CareerAssistant-Career&ProductivityApp', 'Career Assistant | Career & Productivity App');
-    result = result.replaceAll('CareerAssistant', 'Career Assistant');
-    result = result.replaceAll('Career&ProductivityApp', 'Career & Productivity App');
-    result = result.replaceAll('ProductivityApp', 'Productivity App');
-    result = result.replaceAll('SproutKids-AI-PoweredLearningApp', 'Sprout Kids | AI-Powered Learning App');
-    result = result.replaceAll('SproutKids', 'Sprout Kids');
-    result = result.replaceAll('AI-PoweredLearningApp', 'AI-Powered Learning App');
-    result = result.replaceAll('LearningApp', 'Learning App');
-    result = result.replaceAll('FitFlow-Fitness&WellnessPlatform', 'FitFlow | Fitness & Wellness Platform');
-    result = result.replaceAll('FitFlow-Fitness&WellnessApp', 'FitFlow | Fitness & Wellness App');
-    result = result.replaceAll('FitFlow-Fitness&Wellness', 'FitFlow | Fitness & Wellness');
-    result = result.replaceAll('FitFlow - Fitness & Wellness Platform', 'FitFlow | Fitness & Wellness Platform');
-    result = result.replaceAll('FitFlow - Fitness & Wellness App', 'FitFlow | Fitness & Wellness App');
-    result = result.replaceAll('FitFlow - Fitness & Wellness', 'FitFlow | Fitness & Wellness');
-    result = result.replaceAll('Career Assistant - Career & Productivity App', 'Career Assistant | Career & Productivity App');
-    result = result.replaceAll('Sprout Kids - AI-Powered Learning App', 'Sprout Kids | AI-Powered Learning App');
-    result = result.replaceAll('Fitness&WellnessPlatform', 'Fitness & Wellness Platform');
-    result = result.replaceAll('Fitness&WellnessApp', 'Fitness & Wellness App');
-    result = result.replaceAll('WellnessPlatform', 'Wellness Platform');
-    result = result.replaceAll('WellnessApp', 'Wellness App');
-    result = result.replaceAll('CalculatorAutomation', 'Calculator Automation');
-    result = result.replaceAll('AutomationFramework', 'Automation Framework');
-    result = result.replaceAll('AnalyticsDashboard', 'Analytics Dashboard');
-    result = result.replaceAll('AnalysisDashboard', 'Analysis Dashboard');
-
-    // Remove any accidental '$1 $2' date artifacts
-    result = result.replaceAll(r'$1 $2 - $1 $2', 'December 2025 – May 2026');
-    result = result.replaceAll(r'$1 $2', '');
-
-    // Unjam Bug Reporting if split across lines
-    result = result.replaceAll(RegExp(r'\bBug\s*\n\s*Reporting\b', caseSensitive: false), 'Bug Reporting');
-    result = result.replaceAll(RegExp(r',\s*Bug\s*\n\s*Reporting\b', caseSensitive: false), ', Bug Reporting');
-
-    // 3. Unjam jammed words in project bullet points
-    result = result.replaceAll(
-      'BuiltanAI-poweredlearningappusingFlutter,FastAPI,andGroq\'sLlama4ScoutVisionforimage-basedinteractive learning.',
-      'Built an AI-powered learning app using Flutter, FastAPI, and Groq\'s Llama 4 Scout Vision for image-based interactive learning.',
+    // 7. Degree unjamming
+    result = result.replaceAllMapped(
+      RegExp(r'\b(B\.Tech|M\.Tech|B\.E\.|B\.Sc|M\.Sc|BCA|MCA|MBA|Ph\.D)\s*(?:in)?\s*([A-Z])', caseSensitive: false),
+      (m) => '${m.group(1)} in ${m.group(2)}',
     );
-    result = result.replaceAll(
-      'BuiltanAI-poweredlearningappusingFlutter,FastAPI,andGroq\'sLlama4ScoutVisionforimage-basedinteractive',
-      'Built an AI-powered learning app using Flutter, FastAPI, and Groq\'s Llama 4 Scout Vision for image-based interactive',
+    result = result.replaceAllMapped(
+      RegExp(r'\b(Information|Computer|Mechanical|Electrical|Civil|Electronics|Communication|Software)(Technology|Science|Engineering|Management)\b', caseSensitive: false),
+      (m) => '${m.group(1)} ${m.group(2)}',
     );
-    result = result.replaceAll(r"Groq'sLlama4ScoutVision", "Groq's Llama 4 Scout Vision");
-    result = result.replaceAll(r"Llama4ScoutVision", "Llama 4 Scout Vision");
-    result = result.replaceAll('forimage-basedinteractive', 'for image-based interactive');
-    result = result.replaceAll('image-basedinteractive', 'image-based interactive');
-    result = result.replaceAll('learningappusing', 'learning app using');
-    result = result.replaceAll('learningapp', 'learning app');
-    result = result.replaceAll('usingFlutter', 'using Flutter');
-    result = result.replaceAll('BuiltanAI-powered', 'Built an AI-powered');
-    result = result.replaceAll('BuiltanAI', 'Built an AI');
-    result = result.replaceAll(',FastAPI', ', FastAPI');
-    result = result.replaceAll(',andGroq\'s', ', and Groq\'s');
-    result = result.replaceAll(',and', ', and');
+    result = result.replaceAllMapped(
+      RegExp(r'(\b(?:B\.Tech|M\.Tech|B\.E\.|B\.Sc|M\.Sc|BCA|MCA|MBA|Bachelor|Master)[^\n\|]+?)\s+((?:19|20)\d{2}\s*[-–—]\s*(?:(?:19|20)\d{2}|Present))', caseSensitive: false),
+      (m) => '${m.group(1)} | ${m.group(2)}',
+    );
+
+    // 8. Clean accidental literal $1, $2 artifacts
+    result = result.replaceAll(RegExp(r'\$[1-9]'), '');
+
+    // 9. Restore protected terms and URLs in reverse order
+    for (int p = preservedTokens.length - 1; p >= 0; p--) {
+      result = result.replaceAll('___PRESERVED_${p}___', preservedTokens[p]);
+    }
 
     // Action verbs frequently starting resume bullet points
     final actionVerbRegex = RegExp(
@@ -434,6 +523,7 @@ class PdfExtractor {
     final lines = result.split('\n');
     final processedLines = <String>[];
     bool inExperienceOrProjects = false;
+    bool inProjects = false;
 
     for (int i = 0; i < lines.length; i++) {
       var current = lines[i].trim();
@@ -457,7 +547,40 @@ class PdfExtractor {
         continue; // Drop the lone bullet line!
       }
 
-      // Normalize leading hyphens or asterisks to clean standard bullets (no raw '-' in descriptions)
+      // Check section header FIRST so section headers are never eaten by lookahead
+      final cleanHeader = current.replaceAll(RegExp(r'^[\-\*•#\s]+'), '').replaceAll('#', '').replaceAll(':', '').trim().toUpperCase();
+      final isRealSectionHeader = cleanHeader == 'PROFESSIONAL SUMMARY' ||
+          cleanHeader == 'SUMMARY' ||
+          cleanHeader == 'TECHNICAL SKILLS' ||
+          cleanHeader == 'SKILLS' ||
+          cleanHeader == 'PROFESSIONAL EXPERIENCE' ||
+          cleanHeader == 'EXPERIENCE' ||
+          cleanHeader == 'WORK EXPERIENCE' ||
+          cleanHeader == 'PROJECTS' ||
+          cleanHeader == 'KEY PROJECTS' ||
+          cleanHeader == 'EDUCATION' ||
+          cleanHeader == 'CERTIFICATIONS' ||
+          cleanHeader == 'ACHIEVEMENTS';
+
+      if (isRealSectionHeader) {
+        inProjects = cleanHeader.contains('PROJECT');
+        inExperienceOrProjects = cleanHeader.contains('EXPERIENCE') ||
+            cleanHeader.contains('WORK') ||
+            inProjects;
+        processedLines.add(cleanHeader);
+        continue;
+      }
+
+      // Join split "Bug Reporting" in skills
+      if (processedLines.isNotEmpty &&
+          (current.toLowerCase() == 'reporting' ||
+              (processedLines.last.toLowerCase().endsWith('bug') &&
+                  current.toLowerCase().startsWith('reporting')))) {
+        processedLines[processedLines.length - 1] = '${processedLines.last} $current';
+        continue;
+      }
+
+      // Normalize leading hyphens or asterisks to clean standard bullets
       if (current.startsWith('- ') || current.startsWith('* ')) {
         current = '• ${current.substring(2).trim()}';
       } else if (current.startsWith('-') || current.startsWith('*')) {
@@ -486,72 +609,88 @@ class PdfExtractor {
         continue;
       }
 
-      final lowerHeader = current.toLowerCase().replaceAll('#', '').replaceAll(':', '').trim();
-      if (lowerHeader.contains('experience') || lowerHeader.contains('work history') || lowerHeader.contains('project')) {
-        inExperienceOrProjects = true;
-      } else if (lowerHeader.contains('skill') || lowerHeader.contains('education') || lowerHeader.contains('summary') || lowerHeader.contains('profile')) {
-        inExperienceOrProjects = false;
-      }
+      // Project section link association
+      if (inProjects) {
+        final cleanCandidate = current.replaceFirst(RegExp(r'^[\-\*•#\s]+'), '').trim();
+        final isActionVerb = actionVerbRegex.hasMatch(cleanCandidate);
 
-      // If next line contains a Demo link: [Demo](url)
-      if (i + 1 < lines.length) {
-        final next = lines[i + 1].trim();
-        final demoMatch = RegExp(r'\[Demo(?:\s*↗)?\]\((https?://[^)]+)\)').firstMatch(next);
-        if (demoMatch != null &&
-            (current.contains('Career') ||
-             current.contains('Sprout') ||
-             current.contains('FitFlow') ||
-             current.contains('|') ||
-             current.toLowerCase().contains('app'))) {
-          final url = demoMatch.group(1)!;
-          if (!current.contains('[Demo]')) {
-            current = '$current [Demo]($url)';
+        // If current line is a PROJECT HEADER (does not start with an action verb)
+        if (!isActionVerb) {
+          var unjammedProject = cleanCandidate.replaceAllMapped(
+            RegExp(r'\b(Dashboard|Analysis|Store|App|Project|Platform)-(Tableau|Power\s*BI|PowerBI|Excel|Flutter|React|Python|Java|[A-Z][a-z]+)\b'),
+            (m) => '${m.group(1)} | ${m.group(2)}',
+          );
+          unjammedProject = unjammedProject.replaceAll('PowerBI', 'Power BI');
+          current = unjammedProject; // Strip any accidental bullet prefix!
+
+          // Check if next line has a project link (skipping any blank lines)
+          int nextIdx = i + 1;
+          while (nextIdx < lines.length && lines[nextIdx].trim().isEmpty) {
+            nextIdx++;
+          }
+          if (nextIdx < lines.length) {
+            final next = lines[nextIdx].trim();
+            final loneLinkMatch = RegExp(
+              r'^\[?(?:Demo|Project|Link)(?:\s*Link)?(?:\s*↗)?\]?(?:\((https?://[^)]+)\)|https?://\S+)?$',
+              caseSensitive: false,
+            ).firstMatch(next);
+
+            if (loneLinkMatch != null) {
+              final linkUrl = loneLinkMatch.group(1) ?? (next.startsWith('http') ? next : null);
+              final linkLabel = loneLinkMatch.group(0)!;
+              current = linkUrl != null ? '$current [Project]($linkUrl)' : '$current $linkLabel';
+              i = nextIdx; // Skip lone link line
+            } else {
+              // Next line is a bullet description that ends with a project link
+              final trailingLinkMatch = RegExp(
+                r'(\[(?:Demo|Project|Link)(?:\s*↗)?\]\((https?://[^)]+)\)|\b(?:Project|Demo)(?:\s*Link)?(?:\s*↗)?)$',
+                caseSensitive: false,
+              ).firstMatch(next);
+
+              if (trailingLinkMatch != null) {
+                final linkStr = trailingLinkMatch.group(0)!.trim();
+                if (!current.contains('Project') && !current.contains('Demo') && !current.contains('Link')) {
+                  current = '$current $linkStr';
+                  lines[nextIdx] = next.substring(0, trailingLinkMatch.start).trim();
+                }
+              }
+            }
           }
           processedLines.add(current);
-          i++; // Skip next line
+          continue;
+        } else {
+          // It's a bullet description! Strip any leftover trailing project links
+          var bulletText = cleanCandidate.replaceAll(
+            RegExp(r'(\[(?:Demo|Project|Link)(?:\s*↗)?\]\((https?://[^)]+)\)|\b(?:Project|Demo)(?:\s*Link)?(?:\s*↗)?)$', caseSensitive: false),
+            '',
+          ).trim();
+          current = '• $bulletText';
+          processedLines.add(current);
           continue;
         }
       }
 
-      // If current line is a section header, strip any accidental bullet symbols!
-      final cleanHeader = current.replaceAll(RegExp(r'^[\-\*•#\s]+'), '').replaceAll('#', '').replaceAll(':', '').trim().toUpperCase();
-      final isRealSectionHeader = cleanHeader == 'PROFESSIONAL SUMMARY' ||
-          cleanHeader == 'SUMMARY' ||
-          cleanHeader == 'TECHNICAL SKILLS' ||
-          cleanHeader == 'SKILLS' ||
-          cleanHeader == 'PROFESSIONAL EXPERIENCE' ||
-          cleanHeader == 'EXPERIENCE' ||
-          cleanHeader == 'WORK EXPERIENCE' ||
-          cleanHeader == 'PROJECTS' ||
-          cleanHeader == 'KEY PROJECTS' ||
-          cleanHeader == 'EDUCATION' ||
-          cleanHeader == 'CERTIFICATIONS' ||
-          cleanHeader == 'ACHIEVEMENTS';
+      // If current line is a job role title or company in experience, strip accidental bullets
+      final cleanCandidate = current.replaceFirst(RegExp(r'^[\-\*•#\s]+'), '').trim();
+      final isExperienceHeader = inExperienceOrProjects &&
+          !inProjects &&
+          !actionVerbRegex.hasMatch(cleanCandidate) &&
+          !cleanCandidate.endsWith('.') &&
+          !cleanCandidate.contains('@') &&
+          cleanCandidate.length < 80;
 
-      if (isRealSectionHeader) {
-        current = cleanHeader;
+      if (isExperienceHeader) {
+        current = cleanCandidate;
         processedLines.add(current);
         continue;
       }
 
-      // If current line is a job role title (e.g. Mobile Application Developer), strip accidental bullets
-      final isRoleLine = RegExp(
-        r'^(?:Mobile\s+Application\s+Developer|Flutter\s+Developer(?:\s+Intern)?|Software\s+Developer(?:\s+\([^\)]+\))?|Frontend\s+Developer|Backend\s+Developer|Full\s+Stack\s+Developer|Mobile\s+Developer|QA\s+Engineer|Test\s+Engineer|Associate\s+Engineer|Software\s+Engineer(?:\s+Intern)?)\b',
-        caseSensitive: false,
-      ).hasMatch(current.replaceAll(RegExp(r'^[\-\*•#\s]+'), '').trim()) && !current.contains('.');
-
-      if (isRoleLine) {
-        current = current.replaceAll(RegExp(r'^[\-\*•#\s]+'), '').trim();
-        processedLines.add(current);
-        continue;
-      }
-
-      // If in experience or projects, ensure a project or job title doesn't retain " - "
+      // If in experience, ensure a job title doesn't retain " - "
       if (inExperienceOrProjects && current.contains(' - ') && !current.startsWith('•') && !current.contains('.')) {
         current = current.replaceAll(' - ', ' | ');
       }
 
-      // Ensure bullet prefix for accomplishments in experience and projects
+      // Ensure bullet prefix for accomplishments in experience
       final isAlreadyBullet = current.startsWith('•') || current.startsWith('-') || current.startsWith('*');
       final isHeaderOrDate = current.startsWith('#') ||
           RegExp(r'((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*\d{4}\s*[\-–—]\s*(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*\d{4}|Present)|\b\d{4}\s*[\-–—]\s*\d{4}\b)', caseSensitive: false).hasMatch(current) ||
@@ -562,10 +701,10 @@ class PdfExtractor {
           current.contains('|') ||
           current.contains('[Project]') ||
           current.contains('[Demo]') ||
-          RegExp(r'\b(Project|Demo)(?:\s*↗)?$', caseSensitive: false).hasMatch(current);
+          RegExp(r'\b(Project|Demo)(?:\s*Link)?(?:\s*↗)?$', caseSensitive: false).hasMatch(current);
 
       if (!isAlreadyBullet && !isHeaderOrDate) {
-        if (actionVerbRegex.hasMatch(current) || (inExperienceOrProjects && current.length > 20)) {
+        if (actionVerbRegex.hasMatch(current)) {
           current = '• $current';
         }
       }

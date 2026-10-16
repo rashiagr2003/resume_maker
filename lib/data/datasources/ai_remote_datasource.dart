@@ -328,6 +328,13 @@ You are an expert resume writer and ATS specialist. Transform the resume into a 
 Preserve factual history. Do NOT invent skills.
 $verified
 
+CRITICAL PROFESSIONAL SUMMARY GUIDELINE:
+Rewrite the PROFESSIONAL SUMMARY so it directly targets the provided Job Description (JD):
+1. Open with the candidate's professional identity aligned to the JD's target job title and domain.
+2. Weave in 3-4 top technical/functional competencies explicitly required in the JD that are substantiated by the candidate.
+3. Highlight ability to solve the core business challenges or project demands described in the JD.
+4. Keep to 3-4 concise, high-impact sentences (50-75 words). No first-person pronouns ("I", "my"). No generic filler.
+
 Return JSON:
 {
   "tailoredResume": "<Full markdown text>",
