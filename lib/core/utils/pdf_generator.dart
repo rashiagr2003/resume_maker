@@ -381,7 +381,7 @@ class PdfGenerator {
         final pageCount = sfDoc.pages.count;
         final page0Text = sf.PdfTextExtractor(sfDoc).extractText(startPageIndex: 0, endPageIndex: 0);
 
-        final includesAllSections = (!hasProjects || page0Text.contains('PROJECTS')) &&
+        final includesAllSections = (!hasProjects || page0Text.contains('PROJECT')) &&
                                     (!hasEducation || page0Text.contains('EDUCATION'));
 
         if (!isSinglePage) {
@@ -426,7 +426,7 @@ class PdfGenerator {
             final p0Text = sf.PdfTextExtractor(sfDoc).extractText(startPageIndex: 0, endPageIndex: 0);
             sfDoc.dispose();
 
-            final includesAll = (!hasProjects || p0Text.contains('PROJECTS')) &&
+            final includesAll = (!hasProjects || p0Text.contains('PROJECT')) &&
                                 (!hasEducation || p0Text.contains('EDUCATION'));
 
             if (pCount == 1 && includesAll) {
@@ -484,29 +484,50 @@ class PdfGenerator {
 
         if (clean == 'PROFESSIONAL SUMMARY' ||
             clean == 'SUMMARY' ||
+            clean == 'EXECUTIVE SUMMARY' ||
+            clean == 'CAREER SUMMARY' ||
             clean == 'PROFILE' ||
-            clean == 'ABOUT ME') {
+            clean == 'ABOUT ME' ||
+            clean == 'CAREER OBJECTIVE' ||
+            clean == 'OBJECTIVE') {
           currentSectionKey = 'summary';
         } else if (clean == 'TECHNICAL SKILLS' ||
             clean == 'SKILLS' ||
             clean == 'CORE COMPETENCIES' ||
             clean == 'AREAS OF EXPERTISE' ||
             clean == 'PROFESSIONAL SKILLS' ||
-            clean == 'KEY SKILLS') {
+            clean == 'KEY SKILLS' ||
+            clean == 'TECHNICAL & PROFESSIONAL SKILLS' ||
+            clean == 'TECHNICAL AND PROFESSIONAL SKILLS' ||
+            clean == 'TECHNICAL COMPETENCIES') {
           currentSectionKey = 'skills';
         } else if (clean == 'PROFESSIONAL EXPERIENCE' ||
             clean == 'EXPERIENCE' ||
             clean == 'WORK EXPERIENCE' ||
             clean == 'WORK HISTORY' ||
-            clean == 'EMPLOYMENT') {
+            clean == 'EMPLOYMENT' ||
+            clean == 'EMPLOYMENT HISTORY' ||
+            clean == 'RELEVANT EXPERIENCE') {
           currentSectionKey = 'experience';
         } else if (clean == 'PROJECTS' ||
+            clean == 'RELEVANT PROJECTS' ||
             clean == 'KEY PROJECTS' ||
-            clean == 'ACADEMIC PROJECTS') {
+            clean == 'TECHNICAL PROJECTS' ||
+            clean == 'PERSONAL PROJECTS' ||
+            clean == 'ACADEMIC PROJECTS' ||
+            clean == 'NOTABLE PROJECTS' ||
+            clean == 'FEATURED PROJECTS' ||
+            clean == 'SELECTED PROJECTS' ||
+            clean.endsWith('PROJECTS') ||
+            (clean.contains('PROJECT') && !clean.contains('|') && clean.length <= 30)) {
           currentSectionKey = 'projects';
         } else if (clean == 'EDUCATION' ||
             clean == 'ACADEMIC' ||
-            clean == 'ACADEMIC BACKGROUND') {
+            clean == 'ACADEMIC BACKGROUND' ||
+            clean == 'EDUCATION & CERTIFICATIONS' ||
+            clean == 'EDUCATION AND CERTIFICATIONS' ||
+            clean == 'QUALIFICATIONS' ||
+            clean.startsWith('EDUCATION')) {
           currentSectionKey = 'education';
         } else {
           currentSectionKey = 'other_${sections.length}';
@@ -1821,29 +1842,78 @@ class PdfGenerator {
         .trim()
         .toUpperCase();
     if (clean.isEmpty || clean.length > 35) return false;
+    if (clean.contains('|') || clean.endsWith('.')) return false;
 
-    return clean == 'PROFESSIONAL SUMMARY' ||
+    // Projects section
+    if (clean == 'PROJECTS' ||
+        clean == 'RELEVANT PROJECTS' ||
+        clean == 'KEY PROJECTS' ||
+        clean == 'TECHNICAL PROJECTS' ||
+        clean == 'PERSONAL PROJECTS' ||
+        clean == 'ACADEMIC PROJECTS' ||
+        clean == 'NOTABLE PROJECTS' ||
+        clean == 'FEATURED PROJECTS' ||
+        clean == 'SELECTED PROJECTS' ||
+        clean.endsWith('PROJECTS') ||
+        (clean.contains('PROJECT') && clean.length <= 30)) {
+      return true;
+    }
+
+    // Summary section
+    if (clean == 'PROFESSIONAL SUMMARY' ||
         clean == 'SUMMARY' ||
+        clean == 'EXECUTIVE SUMMARY' ||
+        clean == 'CAREER SUMMARY' ||
         clean == 'PROFILE' ||
         clean == 'ABOUT ME' ||
-        clean == 'TECHNICAL SKILLS' ||
+        clean == 'CAREER OBJECTIVE' ||
+        clean == 'OBJECTIVE') {
+      return true;
+    }
+
+    // Skills section
+    if (clean == 'TECHNICAL SKILLS' ||
         clean == 'SKILLS' ||
         clean == 'CORE COMPETENCIES' ||
         clean == 'AREAS OF EXPERTISE' ||
         clean == 'PROFESSIONAL SKILLS' ||
         clean == 'KEY SKILLS' ||
-        clean == 'PROFESSIONAL EXPERIENCE' ||
+        clean == 'TECHNICAL & PROFESSIONAL SKILLS' ||
+        clean == 'TECHNICAL AND PROFESSIONAL SKILLS' ||
+        clean == 'TECHNICAL COMPETENCIES') {
+      return true;
+    }
+
+    // Experience section
+    if (clean == 'PROFESSIONAL EXPERIENCE' ||
         clean == 'EXPERIENCE' ||
         clean == 'WORK EXPERIENCE' ||
         clean == 'WORK HISTORY' ||
         clean == 'EMPLOYMENT' ||
-        clean == 'PROJECTS' ||
-        clean == 'KEY PROJECTS' ||
-        clean == 'ACADEMIC PROJECTS' ||
-        clean == 'EDUCATION' ||
+        clean == 'EMPLOYMENT HISTORY' ||
+        clean == 'RELEVANT EXPERIENCE') {
+      return true;
+    }
+
+    // Education section
+    if (clean == 'EDUCATION' ||
         clean == 'ACADEMIC BACKGROUND' ||
         clean == 'ACADEMIC' ||
-        clean == 'CERTIFICATIONS' ||
-        clean == 'ACHIEVEMENTS';
+        clean == 'EDUCATION & CERTIFICATIONS' ||
+        clean == 'EDUCATION AND CERTIFICATIONS' ||
+        clean == 'QUALIFICATIONS' ||
+        clean.startsWith('EDUCATION')) {
+      return true;
+    }
+
+    // Certifications, achievements, publications
+    return clean == 'CERTIFICATIONS' ||
+        clean == 'CERTIFICATIONS & LICENSES' ||
+        clean == 'CERTIFICATIONS & COURSES' ||
+        clean == 'LICENSES & CERTIFICATIONS' ||
+        clean == 'ACHIEVEMENTS' ||
+        clean == 'AWARDS & ACHIEVEMENTS' ||
+        clean == 'HONORS & AWARDS' ||
+        clean == 'PUBLICATIONS';
   }
 }

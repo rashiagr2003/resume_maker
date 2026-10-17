@@ -261,6 +261,10 @@ class AiFallbackOrchestrator {
           : ['Professional Summary', 'Skills Organization', 'Experience Enhancements', 'ATS Layout Formatting'],
       'cityAlignmentNote': (raw['cityAlignmentNote'] ?? 'Market relevance aligned to $targetCity in professional summary.').toString(),
       'targetPages': targetPages,
+      'bulletAudits': raw['bulletAudits'] is List ? raw['bulletAudits'] : <dynamic>[],
+      'evidenceMappings': raw['evidenceMappings'] is List ? raw['evidenceMappings'] : <dynamic>[],
+      'truthfulnessVerification': raw['truthfulnessVerification'] is Map ? raw['truthfulnessVerification'] : <String, dynamic>{},
+      'clarificationQuestions': _toStringList(raw['clarificationQuestions']),
     };
   }
 

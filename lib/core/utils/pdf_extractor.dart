@@ -551,14 +551,26 @@ class PdfExtractor {
       final cleanHeader = current.replaceAll(RegExp(r'^[\-\*•#\s]+'), '').replaceAll('#', '').replaceAll(':', '').trim().toUpperCase();
       final isRealSectionHeader = cleanHeader == 'PROFESSIONAL SUMMARY' ||
           cleanHeader == 'SUMMARY' ||
+          cleanHeader == 'EXECUTIVE SUMMARY' ||
+          cleanHeader == 'PROFILE' ||
           cleanHeader == 'TECHNICAL SKILLS' ||
           cleanHeader == 'SKILLS' ||
+          cleanHeader == 'CORE COMPETENCIES' ||
           cleanHeader == 'PROFESSIONAL EXPERIENCE' ||
           cleanHeader == 'EXPERIENCE' ||
           cleanHeader == 'WORK EXPERIENCE' ||
+          cleanHeader == 'WORK HISTORY' ||
+          cleanHeader == 'EMPLOYMENT' ||
+          cleanHeader == 'RELEVANT EXPERIENCE' ||
           cleanHeader == 'PROJECTS' ||
+          cleanHeader == 'RELEVANT PROJECTS' ||
           cleanHeader == 'KEY PROJECTS' ||
+          cleanHeader == 'TECHNICAL PROJECTS' ||
+          cleanHeader == 'PERSONAL PROJECTS' ||
+          cleanHeader == 'ACADEMIC PROJECTS' ||
+          cleanHeader.endsWith('PROJECTS') ||
           cleanHeader == 'EDUCATION' ||
+          cleanHeader == 'ACADEMIC BACKGROUND' ||
           cleanHeader == 'CERTIFICATIONS' ||
           cleanHeader == 'ACHIEVEMENTS';
 
@@ -1044,7 +1056,11 @@ class PdfExtractor {
           lower == 'qualifications') {
         arrangedLines.add('');
         arrangedLines.add('## EDUCATION');
-      } else if (lower == 'projects' || lower == 'key projects') {
+      } else if (lower == 'projects' ||
+          lower == 'relevant projects' ||
+          lower == 'key projects' ||
+          lower == 'technical projects' ||
+          lower.endsWith('projects')) {
         arrangedLines.add('');
         arrangedLines.add('## PROJECTS');
       } else {

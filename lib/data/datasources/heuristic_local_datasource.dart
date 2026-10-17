@@ -5,6 +5,7 @@ import '../../domain/entities/resume_input.dart';
 import '../../domain/entities/tailored_resume.dart';
 import '../../domain/entities/user_skill_entry.dart';
 import '../models/analysis_result_dto.dart';
+import 'truthful_resume_rewriter.dart';
 
 typedef HeuristicLocalDatasource = HeuristicLocalDataSource;
 
@@ -75,10 +76,35 @@ class HeuristicLocalDataSource {
     'CI/CD': ['ci/cd', 'continuous integration', 'github actions', 'jenkins'],
     'Test Automation': ['test automation', 'automated testing', 'selenium', 'appium'],
     'Data Analysis': ['data analysis', 'data analytics', 'business analysis', 'data insights'],
+    'Go': ['golang', 'go lang', 'go programming', 'go developer', 'go backend', 'go language'],
   };
 
-  /// Strict word-boundary matching to prevent false positives (e.g. "Block" -> "Bloc", "growing" -> "Go")
+  /// Strict word-boundary matching to prevent false positives (e.g. "Block" -> "Bloc", "go wrong" -> "Go")
   static bool hasSkill(String text, String skill) {
+    // Specifically handle 'Go' (the programming language) to prevent matching common English verb "go"
+    if (skill.toLowerCase() == 'go') {
+      final lowerText = text.toLowerCase();
+      // 1. Matches technical aliases (golang, go lang, go programming, etc.)
+      for (final alias in _skillAliases['Go']!) {
+        if (_hasSkillExact(lowerText, alias)) {
+          return true;
+        }
+      }
+      // 2. Or matches case-sensitive "Go" in explicit technical listing context
+      final techSkillsList = RegExp(
+        r'(?:Languages|Tech Stack|Skills|Proficient in|Technologies)[^.\n]*\bGo\b',
+        caseSensitive: true,
+      );
+      if (techSkillsList.hasMatch(text)) return true;
+      final techComma = RegExp(
+        r'(?:Python|Java|C\+\+|Rust|Node|React|Backend)[,\s/]+Go\b|\bGo[,\s/]+(?:Python|Java|C\+\+|Rust|Node)',
+        caseSensitive: true,
+      );
+      if (techComma.hasMatch(text)) return true;
+
+      return false;
+    }
+
     final lowerText = text.toLowerCase();
     final lowerSkill = skill.toLowerCase();
 
@@ -170,13 +196,25 @@ class HeuristicLocalDataSource {
       }
     }
 
+    final lookingForMatch = RegExp(
+      r'(?:looking for an?|seeking an?|hiring an?)\s+([A-Z][A-Za-z\s]+?)\s+(?:who|to|with|\.)',
+    ).firstMatch(jdText);
+    if (lookingForMatch != null) {
+      final role = lookingForMatch.group(1)!.trim();
+      if (role.isNotEmpty && role.length > 2 && role.length < 40) {
+        return role;
+      }
+    }
+
     final lower = jdText.toLowerCase();
     if (lower.contains('us it recruiter')) return 'US IT Recruiter';
     if (lower.contains('technical recruiter')) return 'Technical Recruiter';
     if (lower.contains('talent acquisition')) return 'Talent Acquisition Specialist';
     if (lower.contains('recruiter')) return 'Recruiter';
-    if (lower.contains('qa automation') || lower.contains('qa tester')) return 'QA Automation Tester';
-    if (lower.contains('software tester') || lower.contains('qa engineer')) return 'QA Engineer';
+    if (lower.contains('manual tester') || lower.contains('manual testing')) return 'Manual QA Tester';
+    if (lower.contains('qa automation') || lower.contains('automation tester')) return 'QA Automation Tester';
+    if (lower.contains('qa tester') || lower.contains('software tester') || lower.contains('qa engineer')) return 'QA Engineer';
+    if (lower.contains('tester')) return 'QA Tester';
     if (lower.contains('flutter developer')) return 'Flutter Developer';
     if (lower.contains('mobile developer')) return 'Mobile App Developer';
     if (lower.contains('software engineer')) return 'Software Engineer';
@@ -205,11 +243,11 @@ class HeuristicLocalDataSource {
     if (jdL.contains('recruiter') || jdL.contains('recruitment') || jdL.contains('staffing') || jdL.contains('talent acquisition')) {
       return 'US IT Recruitment & Staffing';
     }
+    if (jdL.contains('qa ') || jdL.contains('qa engineer') || jdL.contains('tester') || jdL.contains('testing') || jdL.contains('test automation') || jdL.contains('selenium') || jdL.contains('cypress')) {
+      return 'QA & Software Testing';
+    }
     if (jdL.contains('flutter') || jdL.contains('mobile developer') || jdL.contains('software engineer') || jdL.contains('developer') || jdL.contains('frontend') || jdL.contains('backend')) {
       return 'Software Engineering & IT';
-    }
-    if (jdL.contains('qa ') || jdL.contains('testing') || jdL.contains('test automation') || jdL.contains('selenium') || jdL.contains('cypress')) {
-      return 'QA & Software Testing';
     }
     if (jdL.contains('data analyst') || jdL.contains('data science') || jdL.contains('tableau') || jdL.contains('machine learning')) {
       return 'Data Analytics & Data Science';
@@ -235,7 +273,7 @@ class HeuristicLocalDataSource {
     if (combined.contains('recruiter') || combined.contains('recruitment') || combined.contains('staffing') || combined.contains('talent acquisition')) {
       return 'US IT Recruitment & Staffing';
     }
-    if (combined.contains('qa ') || combined.contains('testing') || combined.contains('selenium') || combined.contains('test cases') || combined.contains('test automation')) {
+    if (combined.contains('qa ') || combined.contains('tester') || combined.contains('testing') || combined.contains('selenium') || combined.contains('test cases') || combined.contains('test automation')) {
       return 'QA & Software Testing';
     }
     if (combined.contains('flutter') || combined.contains('mobile') || combined.contains('developer') || combined.contains('software') || combined.contains('frontend') || combined.contains('backend')) {
@@ -508,395 +546,20 @@ class HeuristicLocalDataSource {
     final targetRole = analysis.detectedJobTitle;
     final domain = analysis.detectedDomain;
 
-    final lines = input.resumeText.split('\n');
-    final updatedLines = <String>[];
+    final rewriteResult = TruthfulResumeRewriter.rewrite(
+      originalResume: input.resumeText,
+      jobDescription: input.jobDescription,
+      analysis: analysis,
+      targetCity: targetCity,
+      targetRole: targetRole,
+      domain: domain,
+      verifiedSkills: analysis.userVerifiedSkills,
+    );
 
-    final hasExistingSkills = lines.any((line) {
-      final clean = line
-          .replaceAll(RegExp(r'^[\-\*•#\s]+'), '')
-          .replaceAll('#', '')
-          .replaceAll(':', '')
-          .trim()
-          .toUpperCase();
-      return clean == 'TECHNICAL SKILLS' ||
-          clean == 'SKILLS' ||
-          clean == 'CORE COMPETENCIES' ||
-          clean == 'AREAS OF EXPERTISE' ||
-          clean == 'PROFESSIONAL SKILLS' ||
-          clean == 'KEY SKILLS';
-    });
-
-    bool headerUpdated = false;
-    bool summaryUpdated = false;
-    bool inSkillsSection = false;
-    final candidateVerified = analysis.userVerifiedSkills.values.toList();
-    final unaddedActiveVerified = candidateVerified
-        .where((v) => v.proficiency != SkillProficiency.learning)
-        .toList();
-    final unaddedLearningVerified = candidateVerified
-        .where((v) => v.proficiency == SkillProficiency.learning)
-        .toList();
-    int lastSkillLineIndex = -1;
-
-    for (int i = 0; i < lines.length; i++) {
-      final line = lines[i];
-
-      // Contact line handling: strictly preserve phone & email, omit physical location
-      final isContact = line.contains('@') ||
-          line.contains('+') ||
-          RegExp(r'\b\d{10}\b').hasMatch(line) ||
-          _knownCities.any((c) => line.toLowerCase().contains(c.toLowerCase()));
-      final isLinks = line.toLowerCase().contains('github') ||
-          line.toLowerCase().contains('linkedin') ||
-          line.toLowerCase().contains('portfolio') ||
-          line.toLowerCase().contains('gitlab');
-
-      if (i < 5 && isContact && !isLinks) {
-        String updatedHeader = line;
-        for (final city in _knownCities) {
-          final cityRegex = RegExp(r'\b' + city + r'(?:,\s*India)?\b', caseSensitive: false);
-          updatedHeader = updatedHeader.replaceAll(cityRegex, '');
-        }
-        updatedHeader = updatedHeader.replaceAll(
-          RegExp(r'\b(?:India|Location:?|Open to Relocation[^|]*)\b', caseSensitive: false),
-          '',
-        );
-        updatedHeader = updatedHeader
-            .split('|')
-            .map((s) => s.trim())
-            .where((s) => s.isNotEmpty)
-            .join(' | ');
-
-        headerUpdated = true;
-        if (updatedHeader.isNotEmpty) {
-          updatedLines.add(updatedHeader);
-        }
-        continue;
-      }
-
-      // Title line right after candidate name (Line 1 if not contact/links/section)
-      if (i == 1 && !isContact && !isLinks && !line.startsWith('#') && line.length < 60 && !headerUpdated) {
-        if (targetRole != 'Target Role') {
-          updatedLines.add(targetRole);
-          continue;
-        }
-      }
-
-      // Professional Summary rewriting
-      final cleanLower = line.replaceAll('#', '').trim().toLowerCase();
-      final isSummaryHeader = cleanLower == 'professional summary' ||
-          cleanLower == 'summary' ||
-          cleanLower == 'about me' ||
-          cleanLower == 'profile' ||
-          cleanLower == 'executive summary';
-
-      if (!summaryUpdated && isSummaryHeader) {
-        updatedLines.add('## PROFESSIONAL SUMMARY');
-
-        final keyCompetencies = (analysis.userVerifiedSkills.isNotEmpty
-                ? analysis.userVerifiedSkills.values.map((v) => v.skill).toList()
-                : (analysis.matchedSkills.isNotEmpty
-                    ? analysis.matchedSkills
-                    : <String>[]))
-            .take(3)
-            .join(', ');
-
-        String generatedSummary;
-        if (domain.contains('Dynamics') || domain.contains('CRM') || domain.contains('Salesforce') || targetRole.contains('Dynamics') || targetRole.contains('Salesforce')) {
-          generatedSummary =
-              'Solutions-driven $targetRole aligned with the $targetCity market, specializing in CRM architecture, business process optimization, and enterprise client integrations. Proven expertise in ${keyCompetencies.isNotEmpty ? keyCompetencies : "Salesforce, enterprise automation, and client pipeline management"}, with a demonstrated track record of aligning technical deliverables with operational business goals. Adept at driving stakeholder engagement, streamlining workflows, and delivering high-impact solutions.';
-        } else if (domain.contains('Recruitment') || domain.contains('HR')) {
-          generatedSummary =
-              'Dynamic, performance-focused $targetRole aligned with the $targetCity market, specializing in full-cycle recruitment, candidate sourcing, talent screening, and stakeholder management. Proficient in ${keyCompetencies.isNotEmpty ? keyCompetencies : "talent acquisition, pipeline management, and client communication"}, with a demonstrated track record of coordinating high-volume deliverables and meeting aggressive hiring targets.';
-        } else if (domain.contains('QA') || domain.contains('Testing')) {
-          generatedSummary =
-              'Detail-oriented $targetRole aligned with the $targetCity market, specializing in robust automation frameworks, defect life-cycle management, and cross-platform verification matching requirements in ${keyCompetencies.isNotEmpty ? keyCompetencies : "manual and automated QA"}. Demonstrated success in enhancing test coverage, reducing regression cycles, and driving product quality across production environments.';
-        } else if (domain.contains('Data')) {
-          generatedSummary =
-              'Analytical and metrics-driven $targetRole aligned with the $targetCity market, specializing in data visualization, quantitative reporting, and transforming complex datasets into actionable business intelligence using ${keyCompetencies.isNotEmpty ? keyCompetencies : "modern analytics tools"}. Adept at designing executive KPI dashboards that drive strategic decision-making and operational performance.';
-        } else if (domain.contains('Software') || domain.contains('IT') || domain.contains('Mobile')) {
-          generatedSummary =
-              'Results-driven $targetRole aligned with the $targetCity market, specializing in delivering scalable, high-performance applications matching requirements in ${keyCompetencies.isNotEmpty ? keyCompetencies : "modern software engineering and API integration"}. Demonstrated success driving product excellence, accelerating development cycles, and fostering collaborative cross-functional delivery.';
-        } else if (domain.contains('Sales') || domain.contains('Marketing')) {
-          generatedSummary =
-              'High-performing, strategic $targetRole aligned with the $targetCity market, with proven expertise in ${keyCompetencies.isNotEmpty ? keyCompetencies : "lead generation, outreach, and client relationship management"}. Adept at managing client pipelines, driving engagement, and exceeding operational revenue goals through structured consultation and relationship building.';
-        } else {
-          generatedSummary =
-              'Strategic and results-driven $targetRole aligned with the $targetCity market, leveraging proven competencies in ${keyCompetencies.isNotEmpty ? keyCompetencies : "strategic execution and operational efficiency"} to drive measurable outcomes and organizational success.';
-        }
-
-        updatedLines.add(generatedSummary);
-        summaryUpdated = true;
-
-        if (!hasExistingSkills) {
-          final activeVerified = unaddedActiveVerified
-              .map((v) => '${v.skill} (${v.proficiency.shortLabel})')
-              .toList();
-          final learningVerified = unaddedLearningVerified
-              .map((v) => '${v.skill} (In Progress)')
-              .toList();
-
-          // Extract candidate's previous skills to preserve
-          final prevSkills = extractPreviousSkills(input.resumeText);
-          for (final m in analysis.matchedSkills) {
-            if (!prevSkills.any((p) => p.toLowerCase() == m.toLowerCase())) {
-              prevSkills.add(m);
-            }
-          }
-          prevSkills.removeWhere((ps) =>
-              activeVerified.any((ds) => ds.toLowerCase().contains(ps.toLowerCase())));
-
-          updatedLines.add('');
-          updatedLines.add('## TECHNICAL SKILLS');
-          if (activeVerified.isNotEmpty) {
-            updatedLines.add('Core Competencies: ${activeVerified.join(', ')}');
-          }
-          if (prevSkills.isNotEmpty) {
-            updatedLines.add('Technical & Analytical Tools: ${prevSkills.join(', ')}');
-          }
-          if (learningVerified.isNotEmpty) {
-            updatedLines.add('In-Progress / Currently Learning: ${learningVerified.join(', ')}');
-          }
-          unaddedActiveVerified.clear();
-          unaddedLearningVerified.clear();
-        }
-
-        // Skip previous summary text until next section header
-        while (i + 1 < lines.length) {
-          final nextLine = lines[i + 1].trim();
-          final cleanNext = nextLine
-              .replaceAll('#', '')
-              .replaceAll(':', '')
-              .replaceAll(RegExp(r'^[\-\*•#\s]+'), '')
-              .trim()
-              .toUpperCase();
-          final isNextHeader = nextLine.startsWith('#') ||
-              cleanNext == 'TECHNICAL SKILLS' ||
-              cleanNext == 'SKILLS' ||
-              cleanNext == 'CORE COMPETENCIES' ||
-              cleanNext == 'PROFESSIONAL EXPERIENCE' ||
-              cleanNext == 'EXPERIENCE' ||
-              cleanNext == 'WORK EXPERIENCE' ||
-              cleanNext == 'PROJECTS' ||
-              cleanNext == 'KEY PROJECTS' ||
-              cleanNext == 'EDUCATION';
-          if (isNextHeader) break;
-          i++;
-        }
-        continue;
-      }
-
-      // Skills Section Processing
-      final isSkillsStart = cleanLower == 'technical skills' ||
-          cleanLower == 'skills' ||
-          cleanLower == 'technologies' ||
-          cleanLower == 'core competencies' ||
-          cleanLower == 'areas of expertise' ||
-          cleanLower == 'professional skills';
-
-      if (isSkillsStart) {
-        inSkillsSection = true;
-        updatedLines.add(line);
-        continue;
-      }
-
-      if (inSkillsSection) {
-        final isNextSection = line.startsWith('#') ||
-            (line.toUpperCase() == line &&
-                line.length > 3 &&
-                (line.contains('EXPERIENCE') || line.contains('EDUCATION') || line.contains('PROJECTS') || line.contains('CERTIFICATIONS')));
-
-        if (isNextSection) {
-          // Flush any candidate-chosen verified skills that were not categorized
-          if (unaddedActiveVerified.isNotEmpty && lastSkillLineIndex != -1) {
-            final activeVerifiedText = unaddedActiveVerified
-                .map((v) => '${v.skill} (${v.proficiency.shortLabel})')
-                .join(', ');
-            var targetLine = updatedLines[lastSkillLineIndex].trim();
-            if (!targetLine.endsWith(',')) targetLine += ',';
-            updatedLines[lastSkillLineIndex] = '$targetLine $activeVerifiedText';
-            unaddedActiveVerified.clear();
-          } else if (unaddedActiveVerified.isNotEmpty) {
-            updatedLines.add('Core Competencies: ${unaddedActiveVerified.map((v) => "${v.skill} (${v.proficiency.shortLabel})").join(", ")}');
-            unaddedActiveVerified.clear();
-          }
-
-          if (unaddedLearningVerified.isNotEmpty) {
-            final learningText = unaddedLearningVerified
-                .map((v) => '${v.skill} (In Progress)')
-                .join(', ');
-            updatedLines.add('In-Progress / Currently Learning: $learningText');
-            unaddedLearningVerified.clear();
-          }
-
-          inSkillsSection = false;
-        } else if (line.contains(':') && !line.startsWith('•') && !line.startsWith('-')) {
-          final colonIdx = line.indexOf(':');
-          final catName = line.substring(0, colonIdx).toLowerCase();
-          final skillsToAdd = <String>[];
-
-          if (catName.contains('recruitment') || catName.contains('staffing') || catName.contains('hr')) {
-            unaddedActiveVerified.removeWhere((v) {
-              final sL = v.skill.toLowerCase();
-              if (sL.contains('recruit') || sL.contains('sourc') || sL.contains('screen') || sL.contains('shortlist') || sL.contains('pipeline') || sL.contains('outreach') || sL.contains('call')) {
-                skillsToAdd.add('${v.skill} (${v.proficiency.shortLabel})');
-                return true;
-              }
-              return false;
-            });
-          } else if (catName.contains('language') || catName.contains('frontend') || catName.contains('web')) {
-            unaddedActiveVerified.removeWhere((v) {
-              final sL = v.skill.toLowerCase();
-              if (sL.contains('react') || sL.contains('javascript') || sL.contains('typescript') || sL.contains('python') || sL.contains('java') || sL.contains('c++') || sL.contains('go') || sL.contains('dart')) {
-                skillsToAdd.add('${v.skill} (${v.proficiency.shortLabel})');
-                return true;
-              }
-              return false;
-            });
-          } else if (catName.contains('backend') || catName.contains('api')) {
-            unaddedActiveVerified.removeWhere((v) {
-              final sL = v.skill.toLowerCase();
-              if (sL.contains('node') || sL.contains('express') || sL.contains('fastapi') || sL.contains('django') || sL.contains('graphql') || sL.contains('microservice') || sL.contains('websocket')) {
-                skillsToAdd.add('${v.skill} (${v.proficiency.shortLabel})');
-                return true;
-              }
-              return false;
-            });
-          } else if (catName.contains('tool') || catName.contains('platform') || catName.contains('devops')) {
-            unaddedActiveVerified.removeWhere((v) {
-              final sL = v.skill.toLowerCase();
-              if (sL.contains('docker') || sL.contains('ci/cd') || sL.contains('git') || sL.contains('jenkins') || sL.contains('kubernetes') || sL.contains('aws') || sL.contains('gcp')) {
-                skillsToAdd.add('${v.skill} (${v.proficiency.shortLabel})');
-                return true;
-              }
-              return false;
-            });
-          }
-
-          var lineContent = line.trim();
-          if (skillsToAdd.isNotEmpty) {
-            final appended = skillsToAdd.join(', ');
-            if (!lineContent.endsWith(',')) lineContent += ',';
-            lineContent = '$lineContent $appended';
-          }
-          updatedLines.add(lineContent);
-          lastSkillLineIndex = updatedLines.length - 1;
-          continue;
-        } else {
-          lastSkillLineIndex = updatedLines.length;
-          updatedLines.add(line);
-          continue;
-        }
-      }
-
-      // Do NOT keep any existing "Newly Integrated & Aligned" marker lines
-      if (line.toLowerCase().contains('newly integrated') || line.toLowerCase().contains('newly aligned')) {
-        continue;
-      }
-
-      updatedLines.add(line);
-    }
-
-    if (unaddedActiveVerified.isNotEmpty && lastSkillLineIndex != -1) {
-      final toFlush = unaddedActiveVerified.map((v) => '${v.skill} (${v.proficiency.shortLabel})').join(', ');
-      var targetLine = updatedLines[lastSkillLineIndex].trim();
-      if (!targetLine.endsWith(',')) targetLine += ',';
-      updatedLines[lastSkillLineIndex] = '$targetLine $toFlush';
-      unaddedActiveVerified.clear();
-    } else if (unaddedActiveVerified.isNotEmpty) {
-      updatedLines.add('Core Competencies: ${unaddedActiveVerified.map((v) => "${v.skill} (${v.proficiency.shortLabel})").join(", ")}');
-      unaddedActiveVerified.clear();
-    }
-
-    if (unaddedLearningVerified.isNotEmpty) {
-      final learningText = unaddedLearningVerified
-          .map((v) => '${v.skill} (In Progress)')
-          .join(', ');
-      updatedLines.add('In-Progress / Currently Learning: $learningText');
-      unaddedLearningVerified.clear();
-    }
-
-    if (!summaryUpdated) {
-      int insertIdx = 0;
-      for (int i = 0; i < updatedLines.length && i < 6; i++) {
-        final l = updatedLines[i];
-        if (l.contains('@') || l.contains('http') || l.contains('|') || l.contains('+')) {
-          insertIdx = i + 1;
-        }
-      }
-      final keyCompetencies = (analysis.userVerifiedSkills.isNotEmpty
-              ? analysis.userVerifiedSkills.values.map((v) => v.skill).toList()
-              : (analysis.matchedSkills.isNotEmpty
-                  ? analysis.matchedSkills
-                  : <String>[]))
-          .take(3)
-          .join(', ');
-      String generatedSummary;
-      if (domain.contains('Dynamics') || domain.contains('CRM') || domain.contains('Salesforce') || targetRole.contains('Dynamics') || targetRole.contains('Salesforce')) {
-        generatedSummary =
-            'Solutions-driven $targetRole aligned with the $targetCity market, specializing in CRM architecture, business process optimization, and enterprise client integrations. Proven expertise in ${keyCompetencies.isNotEmpty ? keyCompetencies : "Salesforce, enterprise automation, and client pipeline management"}, with a demonstrated track record of aligning technical deliverables with operational business goals. Adept at driving stakeholder engagement, streamlining workflows, and delivering high-impact solutions.';
-      } else if (domain.contains('Recruitment') || domain.contains('HR')) {
-        generatedSummary =
-            'Dynamic, performance-focused $targetRole aligned with the $targetCity market, specializing in full-cycle recruitment, candidate sourcing, talent screening, and stakeholder management. Proficient in ${keyCompetencies.isNotEmpty ? keyCompetencies : "talent acquisition, pipeline management, and client communication"}, with a demonstrated track record of coordinating high-volume deliverables and meeting aggressive hiring targets.';
-      } else if (domain.contains('QA') || domain.contains('Testing')) {
-        generatedSummary =
-            'Detail-oriented $targetRole aligned with the $targetCity market, specializing in robust automation frameworks, defect life-cycle management, and cross-platform verification matching requirements in ${keyCompetencies.isNotEmpty ? keyCompetencies : "manual and automated QA"}. Demonstrated success in enhancing test coverage, reducing regression cycles, and driving product quality across production environments.';
-      } else if (domain.contains('Data')) {
-        generatedSummary =
-            'Analytical and metrics-driven $targetRole aligned with the $targetCity market, specializing in data visualization, quantitative reporting, and transforming complex datasets into actionable business intelligence using ${keyCompetencies.isNotEmpty ? keyCompetencies : "modern analytics tools"}. Adept at designing executive KPI dashboards that drive strategic decision-making and operational performance.';
-      } else if (domain.contains('Software') || domain.contains('IT') || domain.contains('Mobile')) {
-        generatedSummary =
-            'Results-driven $targetRole aligned with the $targetCity market, specializing in delivering scalable, high-performance applications matching requirements in ${keyCompetencies.isNotEmpty ? keyCompetencies : "modern software engineering and API integration"}. Demonstrated track record of accelerating development cycles, architecting maintainable codebases, and fostering collaborative cross-functional delivery.';
-      } else {
-        generatedSummary =
-            'Strategic and results-driven $targetRole aligned with the $targetCity market, with proven expertise in ${keyCompetencies.isNotEmpty ? keyCompetencies : "strategic execution, project delivery, and workflow optimization"}. Demonstrated track record of managing high-impact deliverables, optimizing operational workflows, and consistently exceeding stakeholder goals.';
-      }
-      updatedLines.insert(insertIdx++, '');
-      updatedLines.insert(insertIdx++, '## PROFESSIONAL SUMMARY');
-      updatedLines.insert(insertIdx++, generatedSummary);
-      summaryUpdated = true;
-    }
-
-    if (!hasExistingSkills && !updatedLines.any((l) => l.toUpperCase().contains('SKILL') || l.toUpperCase().contains('COMPETENC'))) {
-      int summaryIdx = updatedLines.indexWhere((l) => l.contains('PROFESSIONAL SUMMARY'));
-      int insertIdx = summaryIdx != -1 && summaryIdx + 2 <= updatedLines.length ? summaryIdx + 2 : updatedLines.length;
-
-      final activeVerified = unaddedActiveVerified
-          .map((v) => '${v.skill} (${v.proficiency.shortLabel})')
-          .toList();
-      final learningVerified = unaddedLearningVerified
-          .map((v) => '${v.skill} (In Progress)')
-          .toList();
-
-      final prevSkills = extractPreviousSkills(input.resumeText);
-      for (final m in analysis.matchedSkills) {
-        if (!prevSkills.any((p) => p.toLowerCase() == m.toLowerCase())) {
-          prevSkills.add(m);
-        }
-      }
-      prevSkills.removeWhere((ps) =>
-          activeVerified.any((ds) => ds.toLowerCase().contains(ps.toLowerCase())));
-
-      updatedLines.insert(insertIdx++, '');
-      updatedLines.insert(insertIdx++, '## TECHNICAL SKILLS');
-      if (activeVerified.isNotEmpty) {
-        updatedLines.insert(insertIdx++, 'Core Competencies: ${activeVerified.join(', ')}');
-      }
-      if (prevSkills.isNotEmpty) {
-        updatedLines.insert(insertIdx++, 'Technical & Analytical Tools: ${prevSkills.join(', ')}');
-      }
-      if (learningVerified.isNotEmpty) {
-        updatedLines.insert(insertIdx++, 'In-Progress / Currently Learning: ${learningVerified.join(', ')}');
-      }
-    }
-
-    final rawTailored = updatedLines.join('\n');
-    final tailoredText = PdfExtractor.fixProjectContext(rawTailored);
-
-    // Section 6: Run ATS evaluation again against the optimized resume
+    // Run ATS evaluation again against the optimized resume
     final reanalyzedDto = analyzeMatch(ResumeInput(
       jobDescription: input.jobDescription,
-      resumeText: tailoredText,
+      resumeText: rewriteResult.tailoredResume,
       customTargetCity: targetCity,
       targetPages: input.targetPages,
     ));
@@ -904,27 +567,23 @@ class HeuristicLocalDataSource {
 
     return TailoredResume(
       originalResume: input.resumeText,
-      tailoredResume: tailoredText,
+      tailoredResume: rewriteResult.tailoredResume,
       alignedCity: targetCity,
       originalCity: analysis.resumeCity,
-      tailoredSummary: analysis.summary,
-      addedKeywords: analysis.userVerifiedSkills.isNotEmpty
-          ? analysis.userVerifiedSkills.values
-              .map((v) => '${v.skill} (${v.proficiency.shortLabel})')
-              .toList()
-          : const [],
-      modifiedSections: [
-        'Professional Summary (Targeted to JD)',
-        'Core Competencies (Integrated Verified Keywords)',
-        'Contact Header (Clean Format)',
-        'Experience & Bullet Points'
-      ],
-      cityAlignmentNote: 'Aligned professional summary relevance to $targetCity market.',
-      generationModel: 'Intelligent ATS Heuristic Engine (Offline / Instant)',
+      tailoredSummary: rewriteResult.tailoredSummary,
+      addedKeywords: rewriteResult.addedKeywords,
+      modifiedSections: rewriteResult.modifiedSections,
+      cityAlignmentNote:
+          'Market relevance aligned to $targetCity in professional summary.',
+      generationModel: 'Intelligent ATS Heuristic Engine (Truthful Full-Resume)',
       timestamp: DateTime.now(),
       targetPages: input.targetPages,
       reanalyzedScore: reanalyzedResult.matchScore,
       reanalyzedResult: reanalyzedResult,
+      bulletAudits: rewriteResult.bulletAudits,
+      evidenceMappings: rewriteResult.evidenceMappings,
+      truthfulnessResult: rewriteResult.truthfulnessResult,
+      candidateClarificationQuestions: rewriteResult.clarificationQuestions,
     );
   }
 }

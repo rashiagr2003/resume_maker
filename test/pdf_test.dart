@@ -552,5 +552,76 @@ Experienced Flutter engineer.
 
     sfDoc.dispose();
   });
+
+  test('PdfGenerator recognizes RELEVANT PROJECTS and partitions it from professional experience', () async {
+    const resumeWithRelevantProjects = '''
+RASHI AGRAWAL
+Manual Software Tester
++91 9452935405 | rashicareers20@gmail.com
+[LinkedIn](https://linkedin.com/in/rashiagrawal) | [GitHub](https://github.com/rashiagrawal)
+
+PROFESSIONAL SUMMARY
+Detail-oriented Manual Software Tester specializing in functional and regression testing.
+
+TECHNICAL SKILLS
+Manual Testing: Functional Testing, Regression Testing, Smoke Testing
+Tools: Jira, Postman, Git
+
+PROFESSIONAL EXPERIENCE
+Software Developer | Logische Innovative Pvt. Ltd. | Dec 2025 - May 2026
+• Executed 50+ structured manual test cases across functional and regression cycles.
+• Documented and tracked software defects within Jira detailing reproduction steps.
+• Conducted backend API validation using Postman inspecting payload structures.
+
+RELEVANT PROJECTS
+Android Calculator Automation | Java, Appium, TestNG, Maven
+• Configured a comprehensive test execution suite on physical Android devices.
+• Implemented assertions and reusable test scripts for repeatable test execution.
+Calley Automation Framework | Selenium WebDriver, Java, TestNG
+• Validated multi-step form submissions and error handling mechanisms.
+
+EDUCATION
+Manipal University Jaipur | 2021 - 2025
+Bachelor of Technology in Information Technology | CGPA: 7.2/10
+''';
+
+    final tailored = TailoredResume(
+      originalResume: resumeWithRelevantProjects,
+      tailoredResume: resumeWithRelevantProjects,
+      alignedCity: 'Noida, India',
+      tailoredSummary: 'Detail-oriented Manual Software Tester...',
+      addedKeywords: [],
+      modifiedSections: [],
+      cityAlignmentNote: '',
+      generationModel: 'Test Engine',
+      timestamp: DateTime.now(),
+      targetPages: 1,
+    );
+
+    final bytes = await PdfGenerator.generatePdfBytes(
+      tailored: tailored,
+      candidateName: 'Rashi Agrawal',
+    );
+
+    final sfDoc = sf.PdfDocument(inputBytes: bytes);
+    expect(sfDoc.pages.count, equals(1));
+
+    final text = sf.PdfTextExtractor(sfDoc).extractText();
+    final normalized = text.replaceAll(RegExp(r'\s+'), ' ');
+
+    final expIdx = normalized.indexOf('PROFESSIONAL EXPERIENCE');
+    final prjIdx = normalized.indexOf('RELEVANT PROJECTS');
+    final eduIdx = normalized.indexOf('EDUCATION');
+
+    expect(expIdx, isNonNegative);
+    expect(prjIdx, isNonNegative);
+    expect(eduIdx, isNonNegative);
+
+    // Section ordering and partition
+    expect(expIdx < prjIdx, isTrue, reason: 'Experience must precede Projects');
+    expect(prjIdx < eduIdx, isTrue, reason: 'Projects must precede Education');
+
+    sfDoc.dispose();
+  });
 }
 

@@ -1,4 +1,5 @@
 import 'analysis_result.dart';
+import 'resume_audit_entry.dart';
 
 class TailoredResume {
   final String originalResume;
@@ -17,6 +18,18 @@ class TailoredResume {
   final double? reanalyzedScore;
   final AnalysisResult? reanalyzedResult;
 
+  /// Audit breakdown of every reviewed and rewritten bullet/section
+  final List<BulletRewriteAudit> bulletAudits;
+
+  /// Requirement-to-evidence mapping for the target JD
+  final List<RequirementEvidenceMapping> evidenceMappings;
+
+  /// Automated factual integrity and traceability validation
+  final TruthfulnessCheckResult? truthfulnessResult;
+
+  /// Targeted questions for unevidenced high-priority requirements
+  final List<String> candidateClarificationQuestions;
+
   const TailoredResume({
     required this.originalResume,
     required this.tailoredResume,
@@ -31,6 +44,10 @@ class TailoredResume {
     this.targetPages = 1,
     this.reanalyzedScore,
     this.reanalyzedResult,
+    this.bulletAudits = const [],
+    this.evidenceMappings = const [],
+    this.truthfulnessResult,
+    this.candidateClarificationQuestions = const [],
   });
 
   TailoredResume copyWith({
@@ -47,6 +64,10 @@ class TailoredResume {
     int? targetPages,
     double? reanalyzedScore,
     AnalysisResult? reanalyzedResult,
+    List<BulletRewriteAudit>? bulletAudits,
+    List<RequirementEvidenceMapping>? evidenceMappings,
+    TruthfulnessCheckResult? truthfulnessResult,
+    List<String>? candidateClarificationQuestions,
   }) {
     return TailoredResume(
       originalResume: originalResume ?? this.originalResume,
@@ -62,6 +83,11 @@ class TailoredResume {
       targetPages: targetPages ?? this.targetPages,
       reanalyzedScore: reanalyzedScore ?? this.reanalyzedScore,
       reanalyzedResult: reanalyzedResult ?? this.reanalyzedResult,
+      bulletAudits: bulletAudits ?? this.bulletAudits,
+      evidenceMappings: evidenceMappings ?? this.evidenceMappings,
+      truthfulnessResult: truthfulnessResult ?? this.truthfulnessResult,
+      candidateClarificationQuestions: candidateClarificationQuestions ??
+          this.candidateClarificationQuestions,
     );
   }
 }

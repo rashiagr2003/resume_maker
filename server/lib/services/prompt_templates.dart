@@ -132,24 +132,67 @@ CORE OPTIMIZATION & ATS SPECIFICATIONS:
      • Experienced Professionals: Summary → Core Competencies / Skills → Professional Experience → Projects → Education & Certifications
    - Remove repetitive wording, vague statements, filler phrases, and unnecessary personal data.
 
-4. ATS-FRIENDLY SINGLE-COLUMN FORMATTING:
+4. WORK EXPERIENCE — HIGHEST PRIORITY MANDATORY REWRITE:
+   - Review every employment entry and rewrite EVERY relevant bullet. Do NOT merely append skills lists.
+   - Use this rigorous structure: Action verb + task/responsibility + method/tool/context + supported outcome.
+   - Eliminate weak verbs ("worked on", "handled", "responsible for") and replace with impactful action verbs ("Architected", "Engineered", "Executed", "Investigated", "Spearheaded", "Streamlined", "Validated", "Designed").
+   - Incorporate JD terminology naturally where supported by candidate experience (e.g. Jira defect workflows, regression passes, API validation, Clean Architecture).
+   - STRICT FACTUAL INTEGRITY: Preserve all genuine metrics (e.g. 50+ test cases, 15+ APIs), employers, titles, and dates. NEVER invent metrics, percentages, team sizes, or technologies not present in the original resume.
+
+5. PROJECTS — PURPOSE, CONTRIBUTION & VERIFIED OUTCOMES:
+   - For every relevant project, retain the real project name and technologies.
+   - Improve the description to communicate its purpose, the candidate's actual contribution, technical workflows, and verified outcomes.
+   - Align descriptions with target JD requirements where supported.
+
+6. ATS-FRIENDLY SINGLE-COLUMN FORMATTING:
    - Single-column structure with standard section headings (PROFESSIONAL SUMMARY, SKILLS, PROFESSIONAL EXPERIENCE, PROJECTS, EDUCATION, CERTIFICATIONS).
    - Every bullet in Experience and Projects MUST start with "• " on its own line. No "-" or "*", and no split/wrapped bullets.
    - Contact line: Candidate Name on top, followed by Phone and Email on the contact line. STRICTLY OMIT physical location/street address.
    - Preserve all hyperlinks (LinkedIn, GitHub, Portfolio, Project URLs) cleanly formatted as [Link Text](URL).
    - Target page length: $targetPages page(s). Balanced spacing with zero wasted or overflowing whitespace.
 
-5. CANDIDATE VERIFIED SKILLS:
+7. CANDIDATE VERIFIED SKILLS:
    $verifiedSkillsText
 
-Return a pure JSON object:
+Return a pure JSON object with these EXACT keys:
 {
-  "tailoredResume": "<Full markdown text of the revised, ATS-friendly resume>",
+  "tailoredResume": "<Full markdown text of the revised, ATS-friendly single-column resume>",
   "alignedCity": "$targetCity",
   "tailoredSummary": "<The rewritten, targeted professional summary>",
   "addedKeywords": ["<aligned keyword 1>", "<aligned keyword 2>", ...],
-  "modifiedSections": ["Professional Summary", "Skills Organization", "Experience Enhancements", "ATS Layout Formatting"],
-  "cityAlignmentNote": "<Note explaining market alignment to $targetCity>"
+  "modifiedSections": ["Professional Summary", "Technical Skills", "Work Experience Bullets", "Project Workflows"],
+  "cityAlignmentNote": "<Note explaining market alignment to $targetCity>",
+  "bulletAudits": [
+    {
+      "section": "<Work Experience / Projects / Professional Summary>",
+      "original": "<Original bullet or summary>",
+      "rewritten": "<Rewritten bullet or summary>",
+      "relevance": "<Direct connection to target JD responsibility>",
+      "evidence": "<Candidate source background>",
+      "hasChanged": true,
+      "rationale": "<Action verb + task + tool + outcome improvement rationale>"
+    }
+  ],
+  "evidenceMappings": [
+    {
+      "requirement": "<Key JD Requirement>",
+      "classification": "<demonstratedInEmployment | demonstratedInProject | supportedByCoursework | listedSkillOnly | transferable | notEvidenced>",
+      "confidence": 0.9,
+      "sourceEvidence": "<Where it is proven in resume>",
+      "recommendation": "<Actionable step to bridge or strengthen>"
+    }
+  ],
+  "truthfulnessVerification": {
+    "isTruthful": true,
+    "verifiedFactsCount": 10,
+    "preservedMetrics": ["<metric 1>", "<metric 2>"],
+    "flaggedClaims": [],
+    "traceabilityScore": 100.0,
+    "summary": "All claims verified against candidate original resume. Zero fabricated employers, dates, or metrics."
+  },
+  "clarificationQuestions": [
+    "<Targeted question if important requirement needs candidate confirmation>"
+  ]
 }
 
 Important: Return valid JSON only. Do not include Markdown fences or additional commentary.

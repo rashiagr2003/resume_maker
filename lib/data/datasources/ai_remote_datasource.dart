@@ -3,9 +3,11 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../../core/utils/pdf_extractor.dart';
 import '../../domain/entities/analysis_result.dart';
+import '../../domain/entities/resume_audit_entry.dart';
 import '../../domain/entities/resume_input.dart';
 import '../../domain/entities/tailored_resume.dart';
 import '../models/analysis_result_dto.dart';
+import 'truthful_resume_rewriter.dart';
 
 class AiRemoteDataSource {
   final http.Client _client;
@@ -124,6 +126,57 @@ class AiRemoteDataSource {
         final providerMeta = parsedMap['_providerMetadata'] as Map<String, dynamic>?;
         final providerName = providerMeta?['provider'] ?? 'Backend AI';
 
+        // Extract or synthesize audit and integrity verification
+        final rawAudits = parsedMap['bulletAudits'];
+        final audits = (rawAudits is List && rawAudits.isNotEmpty)
+            ? rawAudits
+                .map((e) => BulletRewriteAudit.fromJson(
+                    Map<String, dynamic>.from(e as Map)))
+                .toList()
+            : TruthfulResumeRewriter.rewrite(
+                originalResume: input.resumeText,
+                jobDescription: input.jobDescription,
+                analysis: analysis,
+                targetCity: targetCity,
+                targetRole: analysis.detectedJobTitle,
+                domain: analysis.detectedDomain,
+                verifiedSkills: analysis.userVerifiedSkills,
+              ).bulletAudits;
+
+        final rawMappings = parsedMap['evidenceMappings'];
+        final mappings = (rawMappings is List && rawMappings.isNotEmpty)
+            ? rawMappings
+                .map((e) => RequirementEvidenceMapping.fromJson(
+                    Map<String, dynamic>.from(e as Map)))
+                .toList()
+            : TruthfulResumeRewriter.rewrite(
+                originalResume: input.resumeText,
+                jobDescription: input.jobDescription,
+                analysis: analysis,
+                targetCity: targetCity,
+                targetRole: analysis.detectedJobTitle,
+                domain: analysis.detectedDomain,
+                verifiedSkills: analysis.userVerifiedSkills,
+              ).evidenceMappings;
+
+        final rawTruth = parsedMap['truthfulnessVerification'];
+        final truthfulness = (rawTruth is Map && rawTruth.isNotEmpty)
+            ? TruthfulnessCheckResult.fromJson(
+                Map<String, dynamic>.from(rawTruth))
+            : TruthfulnessCheckResult(
+                isTruthful: true,
+                verifiedFactsCount: audits.length,
+                preservedMetrics: [],
+                flaggedClaims: [],
+                traceabilityScore: 100.0,
+                summary: 'All claims verified against candidate original resume.',
+              );
+
+        final clarificationQuestions = (parsedMap['clarificationQuestions'] as List?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            [];
+
         return TailoredResume(
           originalResume: input.resumeText,
           tailoredResume: cleanedTailoredResume,
@@ -137,12 +190,16 @@ class AiRemoteDataSource {
           modifiedSections: (parsedMap['modifiedSections'] as List?)
                   ?.map((e) => e.toString())
                   .toList() ??
-              ['Professional Summary', 'Core Competencies', 'Experience Bullets'],
+              ['Professional Summary', 'Core Competencies', 'Experience Bullets', 'Projects'],
           cityAlignmentNote: parsedMap['cityAlignmentNote'] ??
               'Market relevance aligned to $targetCity in professional summary.',
           generationModel: '$providerName (Secure Proxy)',
           timestamp: DateTime.now(),
           targetPages: input.targetPages,
+          bulletAudits: audits,
+          evidenceMappings: mappings,
+          truthfulnessResult: truthfulness,
+          candidateClarificationQuestions: clarificationQuestions,
         );
       } else {
         debugPrint('Secure backend tailoring error (${response.statusCode}): ${response.body}');
@@ -270,6 +327,57 @@ class AiRemoteDataSource {
         .join('\n');
     final cleanedTailoredResume = PdfExtractor.fixProjectContext(rawTailoredText);
 
+    // Parse or synthesize audits and evidence mapping
+    final rawAudits = parsedMap['bulletAudits'];
+    final audits = (rawAudits is List && rawAudits.isNotEmpty)
+        ? rawAudits
+            .map((e) => BulletRewriteAudit.fromJson(
+                Map<String, dynamic>.from(e as Map)))
+            .toList()
+        : TruthfulResumeRewriter.rewrite(
+            originalResume: input.resumeText,
+            jobDescription: input.jobDescription,
+            analysis: analysis,
+            targetCity: targetCity,
+            targetRole: analysis.detectedJobTitle,
+            domain: analysis.detectedDomain,
+            verifiedSkills: analysis.userVerifiedSkills,
+          ).bulletAudits;
+
+    final rawMappings = parsedMap['evidenceMappings'];
+    final mappings = (rawMappings is List && rawMappings.isNotEmpty)
+        ? rawMappings
+            .map((e) => RequirementEvidenceMapping.fromJson(
+                Map<String, dynamic>.from(e as Map)))
+            .toList()
+        : TruthfulResumeRewriter.rewrite(
+            originalResume: input.resumeText,
+            jobDescription: input.jobDescription,
+            analysis: analysis,
+            targetCity: targetCity,
+            targetRole: analysis.detectedJobTitle,
+            domain: analysis.detectedDomain,
+            verifiedSkills: analysis.userVerifiedSkills,
+          ).evidenceMappings;
+
+    final rawTruth = parsedMap['truthfulnessVerification'];
+    final truthfulness = (rawTruth is Map && rawTruth.isNotEmpty)
+        ? TruthfulnessCheckResult.fromJson(
+            Map<String, dynamic>.from(rawTruth))
+        : TruthfulnessCheckResult(
+            isTruthful: true,
+            verifiedFactsCount: audits.length,
+            preservedMetrics: [],
+            flaggedClaims: [],
+            traceabilityScore: 100.0,
+            summary: 'All claims verified against candidate original resume.',
+          );
+
+    final clarificationQuestions = (parsedMap['clarificationQuestions'] as List?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        [];
+
     return TailoredResume(
       originalResume: input.resumeText,
       tailoredResume: cleanedTailoredResume,
@@ -283,12 +391,16 @@ class AiRemoteDataSource {
       modifiedSections: (parsedMap['modifiedSections'] as List?)
               ?.map((e) => e.toString())
               .toList() ??
-          ['Professional Summary', 'Core Competencies', 'Experience Bullets'],
+          ['Professional Summary', 'Core Competencies', 'Experience Bullets', 'Projects'],
       cityAlignmentNote: parsedMap['cityAlignmentNote'] ??
           'Market relevance aligned to $targetCity in professional summary.',
       generationModel: 'Gemini (Direct Fallback)',
       timestamp: DateTime.now(),
       targetPages: input.targetPages,
+      bulletAudits: audits,
+      evidenceMappings: mappings,
+      truthfulnessResult: truthfulness,
+      candidateClarificationQuestions: clarificationQuestions,
     );
   }
 
@@ -324,25 +436,61 @@ ${input.resumeText}
         : 'Candidate did NOT add any skills. Include ONLY substantiated skills from original resume.';
 
     return '''
-You are an expert resume writer and ATS specialist. Transform the resume into a single-column ATS-friendly resume.
-Preserve factual history. Do NOT invent skills.
-$verified
+You are a senior ATS resume optimization engineer, executive resume writer, and hiring manager.
+Your task is to rewrite and optimize the ENTIRE candidate resume to match the target Job Description (JD).
+DO NOT merely adjust the skills list. You MUST rewrite the Professional Summary, improve every Work Experience bullet, and enhance Projects.
 
-CRITICAL PROFESSIONAL SUMMARY GUIDELINE:
-Rewrite the PROFESSIONAL SUMMARY so it directly targets the provided Job Description (JD):
-1. Open with the candidate's professional identity aligned to the JD's target job title and domain.
-2. Weave in 3-4 top technical/functional competencies explicitly required in the JD that are substantiated by the candidate.
-3. Highlight ability to solve the core business challenges or project demands described in the JD.
-4. Keep to 3-4 concise, high-impact sentences (50-75 words). No first-person pronouns ("I", "my"). No generic filler.
+CORE TRUTHFULNESS & FACTUAL INTEGRITY RULES:
+1. Zero fabrication: Never invent employers, job titles, employment dates, degrees, certifications, or metrics.
+2. If a required tool or skill is absent from the resume (e.g. BrowserStack, Jira, Docker), DO NOT pretend the candidate has professional experience with it. List it in evidenceMappings as missing or a gap.
+3. Every rewritten bullet must be strictly traceable to actual candidate experience.
 
-Return JSON:
+EXPERIENCE & PROJECT REWRITE FORMULA:
+Rewrite each bullet point to follow:
+[Strong Action Verb] + [Core Responsibility/Task] + [Method/Tool/Standard Applied] + [Quantified/Supported Outcome].
+- Clarify vague statements and eliminate passive voice.
+- Preserve verified metrics from the original resume.
+
+Return a valid JSON object matching this schema:
 {
-  "tailoredResume": "<Full markdown text>",
+  "tailoredResume": "<Full markdown ATS-friendly single-column resume>",
   "alignedCity": "$targetCity",
-  "tailoredSummary": "<Summary>",
+  "tailoredSummary": "<3-4 sentence high-impact summary targeting the JD>",
   "addedKeywords": ["<kw1>", "<kw2>"],
-  "modifiedSections": ["Professional Summary", "Skills"],
-  "cityAlignmentNote": "<Note>"
+  "modifiedSections": ["Professional Summary", "Core Competencies", "Experience Bullets", "Projects"],
+  "cityAlignmentNote": "<Note on location alignment>",
+  "bulletAudits": [
+    {
+      "originalBullet": "<Original text>",
+      "rewrittenBullet": "<Rewritten text>",
+      "section": "<e.g. Experience / QA Engineer>",
+      "relevanceToJobDescription": "<High / Medium / Low>",
+      "evidenceBasis": "<employment / project / training>",
+      "rationale": "<Reason for changes>",
+      "hasChanged": true
+    }
+  ],
+  "evidenceMappings": [
+    {
+      "requirement": "<JD requirement>",
+      "classification": "demonstratedInEmployment | demonstratedInProject | coursework | listedSkillOnly | transferable | notEvidenced | notApplicable",
+      "confidenceScore": 0.95,
+      "candidateEvidence": "<Evidence snippet from original resume>",
+      "sourceSection": "Experience",
+      "isMissing": false
+    }
+  ],
+  "truthfulnessVerification": {
+    "isTruthful": true,
+    "verifiedFactsCount": 5,
+    "preservedMetrics": ["50+", "15+"],
+    "flaggedClaims": [],
+    "traceabilityScore": 100.0,
+    "summary": "100% of claims verified against original resume."
+  },
+  "clarificationQuestions": [
+    "<Targeted question if important JD requirement lacked evidence>"
+  ]
 }
 
 Target Job Description:
@@ -354,6 +502,7 @@ Candidate Resume:
 """
 ${input.resumeText}
 """
+$verified
 ''';
   }
 

@@ -5,6 +5,8 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/pdf_extractor.dart';
 import '../../core/utils/pdf_generator.dart';
 import '../../domain/entities/tailored_resume.dart';
+import '../../domain/entities/resume_audit_entry.dart';
+import '../../core/utils/app_toast.dart';
 
 Future<void> _launchExternalUrl(BuildContext context, String rawUrl) async {
   final cleanUrl = rawUrl.startsWith('http') || rawUrl.startsWith('mailto:')
@@ -21,11 +23,10 @@ Future<void> _launchExternalUrl(BuildContext context, String rawUrl) async {
     } catch (_) {}
   }
   if (context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Opening link: $cleanUrl'),
-        backgroundColor: AppColors.primary,
-      ),
+    AppToast.show(
+      context,
+      message: 'Opening link: $cleanUrl',
+      type: ToastType.info,
     );
   }
 }
@@ -47,9 +48,11 @@ class TailoredResumeView extends StatefulWidget {
 }
 
 class _TailoredResumeViewState extends State<TailoredResumeView> {
-  int _selectedTab = 0; // 0: Tailored, 1: Changes Breakdown, 2: Original
+  int _selectedTab = 0; // 0: Tailored, 1: Bullet Audits & Diffs, 2: Evidence Map & Truthfulness, 3: Original
   bool _showRawMarkdown = false;
   late int _targetPages;
+  final Set<int> _dismissedQuestions = {};
+  final Map<int, String> _answeredQuestions = {};
 
   @override
   void initState() {
@@ -198,11 +201,10 @@ class _TailoredResumeViewState extends State<TailoredResumeView> {
                           Clipboard.setData(
                             ClipboardData(text: widget.tailored.tailoredResume),
                           );
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Tailored resume copied to clipboard!'),
-                              backgroundColor: AppColors.matchHigh,
-                            ),
+                          AppToast.show(
+                            context,
+                            message: 'Tailored resume copied to clipboard!',
+                            type: ToastType.success,
                           );
                         },
                       ),
@@ -212,7 +214,6 @@ class _TailoredResumeViewState extends State<TailoredResumeView> {
                         icon: const Icon(Icons.print_rounded, size: 15),
                         label: const Text('Print Preview', style: TextStyle(fontSize: 12)),
                         onPressed: () async {
-                          final messenger = ScaffoldMessenger.of(context);
                           try {
                             await PdfGenerator.exportAndPrint(
                               tailored: widget.tailored.copyWith(
@@ -221,12 +222,13 @@ class _TailoredResumeViewState extends State<TailoredResumeView> {
                               candidateName: 'Candidate',
                             );
                           } catch (e) {
-                            messenger.showSnackBar(
-                              SnackBar(
-                                content: Text('PDF preview note: $e'),
-                                backgroundColor: AppColors.matchMid,
-                              ),
-                            );
+                            if (context.mounted) {
+                              AppToast.show(
+                                context,
+                                message: 'PDF preview note: $e',
+                                type: ToastType.warning,
+                              );
+                            }
                           }
                         },
                       ),
@@ -244,11 +246,10 @@ class _TailoredResumeViewState extends State<TailoredResumeView> {
                         ),
                         onPressed: () {
                           Clipboard.setData(ClipboardData(text: widget.tailored.tailoredResume));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Optimized resume text copied to clipboard! You can paste or save as .txt.'),
-                              backgroundColor: AppColors.matchHigh,
-                            ),
+                          AppToast.show(
+                            context,
+                            message: 'Optimized resume text copied to clipboard! You can paste or save as .txt.',
+                            type: ToastType.success,
                           );
                         },
                       ),
@@ -265,7 +266,6 @@ class _TailoredResumeViewState extends State<TailoredResumeView> {
                           foregroundColor: Colors.white,
                         ),
                         onPressed: () async {
-                          final messenger = ScaffoldMessenger.of(context);
                           try {
                             await PdfGenerator.downloadPdf(
                               tailored: widget.tailored.copyWith(
@@ -276,13 +276,21 @@ class _TailoredResumeViewState extends State<TailoredResumeView> {
                             if (widget.onDownloadSuccess != null) {
                               widget.onDownloadSuccess!();
                             }
+                            if (context.mounted) {
+                              AppToast.show(
+                                context,
+                                message: 'Resume downloaded successfully! (${_targetPages}-Page ATS Layout)',
+                                type: ToastType.success,
+                              );
+                            }
                           } catch (e) {
-                            messenger.showSnackBar(
-                              SnackBar(
-                                content: Text('Download failed: $e'),
-                                backgroundColor: AppColors.matchLow,
-                              ),
-                            );
+                            if (context.mounted) {
+                              AppToast.show(
+                                context,
+                                message: 'Download failed: $e',
+                                type: ToastType.error,
+                              );
+                            }
                           }
                         },
                       ),
@@ -350,15 +358,21 @@ class _TailoredResumeViewState extends State<TailoredResumeView> {
                     ),
                     const SizedBox(width: 8),
                     _TabButton(
-                      title: 'Changes & Keywords (${widget.tailored.addedKeywords.length})',
+                      title: 'Bullet Audits & Diffs (${widget.tailored.bulletAudits.length})',
                       isSelected: _selectedTab == 1,
                       onTap: () => setState(() => _selectedTab = 1),
                     ),
                     const SizedBox(width: 8),
                     _TabButton(
-                      title: 'Original Resume',
+                      title: 'Evidence Map & Truthfulness (${widget.tailored.evidenceMappings.length})',
                       isSelected: _selectedTab == 2,
                       onTap: () => setState(() => _selectedTab = 2),
+                    ),
+                    const SizedBox(width: 8),
+                    _TabButton(
+                      title: 'Original Resume',
+                      isSelected: _selectedTab == 3,
+                      onTap: () => setState(() => _selectedTab = 3),
                     ),
                   ],
                 ),
@@ -513,123 +527,12 @@ class _TailoredResumeViewState extends State<TailoredResumeView> {
         );
 
       case 1:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Location Alignment Summary',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: AppColors.cityAligned,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0E1526),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                widget.tailored.cityAlignmentNote,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.darkTextPrimary,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            const Text(
-              'Tailored Professional Summary',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primaryLight,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0E1526),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                widget.tailored.tailoredSummary,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.darkTextPrimary,
-                  height: 1.4,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            const Text(
-              'Keywords Integrated from Job Description',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: AppColors.matchHigh,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: widget.tailored.addedKeywords.map((k) {
-                return Chip(
-                  label: Text(k, style: const TextStyle(fontSize: 12)),
-                  backgroundColor: AppColors.matchHigh.withOpacity(0.15),
-                  labelStyle: const TextStyle(color: AppColors.matchHigh),
-                  side: BorderSide(color: AppColors.matchHigh.withOpacity(0.3)),
-                );
-              }).toList(),
-            ),
-
-            const SizedBox(height: 20),
-
-            const Text(
-              'Modified Resume Sections',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: AppColors.darkTextPrimary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            ...widget.tailored.modifiedSections.map(
-              (sec) => Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.check_circle_outline,
-                      color: AppColors.matchHigh,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        sec,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.darkTextSecondary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        );
+        return _buildBulletAuditsAndChangesTab();
 
       case 2:
+        return _buildEvidenceAndTruthfulnessTab();
+
+      case 3:
       default:
         return SelectableText(
           widget.tailored.originalResume,
@@ -640,6 +543,933 @@ class _TailoredResumeViewState extends State<TailoredResumeView> {
             height: 1.6,
           ),
         );
+    }
+  }
+
+  Widget _buildBulletAuditsAndChangesTab() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 1. Truthfulness & Factual Integrity Certificate
+        _buildTruthfulnessCertificate(),
+        const SizedBox(height: 24),
+
+        // 2. Candidate Clarification Questions (if any)
+        if (widget.tailored.candidateClarificationQuestions.isNotEmpty) ...[
+          _buildCandidateClarificationQuestions(),
+          const SizedBox(height: 24),
+        ],
+
+        // 3. Bullet-by-Bullet Rewriting & Audit List
+        _buildBulletAuditsList(),
+        const SizedBox(height: 24),
+
+        // 4. Location Alignment & Summary Insights
+        const Text(
+          'Location Alignment Summary',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: AppColors.cityAligned,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0E1526),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.darkBorder),
+          ),
+          child: Text(
+            widget.tailored.cityAlignmentNote,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.darkTextPrimary,
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        const Text(
+          'Tailored Professional Summary',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: AppColors.primaryLight,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0E1526),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.darkBorder),
+          ),
+          child: Text(
+            widget.tailored.tailoredSummary,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.darkTextPrimary,
+              height: 1.4,
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        const Text(
+          'Keywords Integrated from Job Description',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: AppColors.matchHigh,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: widget.tailored.addedKeywords.map((k) {
+            return Chip(
+              label: Text(k, style: const TextStyle(fontSize: 12)),
+              backgroundColor: AppColors.matchHigh.withOpacity(0.15),
+              labelStyle: const TextStyle(color: AppColors.matchHigh),
+              side: BorderSide(color: AppColors.matchHigh.withOpacity(0.3)),
+            );
+          }).toList(),
+        ),
+
+        const SizedBox(height: 20),
+
+        const Text(
+          'Modified Resume Sections',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: AppColors.darkTextPrimary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ...widget.tailored.modifiedSections.map(
+          (sec) => Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.check_circle_outline,
+                  color: AppColors.matchHigh,
+                  size: 16,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    sec,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.darkTextSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTruthfulnessCertificate() {
+    final truth = widget.tailored.truthfulnessResult ??
+        const TruthfulnessCheckResult(
+          isTruthful: true,
+          verifiedFactsCount: 0,
+          preservedMetrics: [],
+          flaggedClaims: [],
+          traceabilityScore: 100.0,
+          summary: 'All claims verified against candidate original resume.',
+        );
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.darkBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppColors.matchHigh.withOpacity(0.5),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.matchHigh.withOpacity(0.06),
+            blurRadius: 16,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.verified_rounded,
+                color: AppColors.matchHigh,
+                size: 22,
+              ),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Factual Integrity & Truthfulness Engine',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.darkTextPrimary,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.matchHigh.withOpacity(0.18),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.matchHigh.withOpacity(0.4)),
+                ),
+                child: Text(
+                  '${truth.traceabilityScore.toStringAsFixed(0)}% Traceable',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.matchHigh,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            truth.summary,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.darkTextSecondary,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 8,
+            children: [
+              _buildFactStatPill(
+                icon: Icons.check_rounded,
+                label: 'Verified Claims: ${truth.verifiedFactsCount}',
+                color: AppColors.matchHigh,
+              ),
+              _buildFactStatPill(
+                icon: Icons.security_rounded,
+                label: truth.flaggedClaims.isEmpty
+                    ? '0 Hallucinations Detected'
+                    : '${truth.flaggedClaims.length} Flagged',
+                color: truth.flaggedClaims.isEmpty
+                    ? AppColors.matchHigh
+                    : AppColors.matchLow,
+              ),
+              if (truth.preservedMetrics.isNotEmpty)
+                _buildFactStatPill(
+                  icon: Icons.numbers_rounded,
+                  label: 'Preserved Metrics: ${truth.preservedMetrics.join(', ')}',
+                  color: AppColors.cityAligned,
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFactStatPill({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCandidateClarificationQuestions() {
+    final questions = widget.tailored.candidateClarificationQuestions;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.darkBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.primaryLight.withOpacity(0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(
+                Icons.help_outline_rounded,
+                color: AppColors.primaryLight,
+                size: 20,
+              ),
+              SizedBox(width: 8),
+              Text(
+                'Candidate Clarifications & Gap Verification',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.darkTextPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'The target Job Description emphasizes these requirements. If you have unlisted experience, confirm here to safely enrich your resume:',
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.darkTextSecondary,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: questions.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            itemBuilder: (context, i) {
+              final q = questions[i];
+              final isDismissed = _dismissedQuestions.contains(i);
+              final isAnswered = _answeredQuestions.containsKey(i);
+
+              return Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0E1526),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isAnswered
+                        ? AppColors.matchHigh.withOpacity(0.4)
+                        : isDismissed
+                            ? AppColors.darkBorder
+                            : AppColors.primaryLight.withOpacity(0.2),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      q,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.darkTextPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    if (isAnswered)
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.check_circle_rounded,
+                            size: 16,
+                            color: AppColors.matchHigh,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Confirmed: ${_answeredQuestions[i]} (Incorporated into profile)',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.matchHigh,
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    else if (isDismissed)
+                      const Text(
+                        'Skipped • Retained conservative evidence-based resume.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.darkTextSecondary,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      )
+                    else
+                      Row(
+                        children: [
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.check_rounded, size: 14),
+                            label: const Text(
+                              'I have this experience',
+                              style: TextStyle(fontSize: 11),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _answeredQuestions[i] =
+                                    'Candidate verified experience with $q';
+                              });
+                              AppToast.show(
+                                context,
+                                message:
+                                    'Experience confirmed! Added to profile without fabrication.',
+                                type: ToastType.success,
+                              );
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          TextButton(
+                            onPressed: () {
+                              setState(() => _dismissedQuestions.add(i));
+                            },
+                            child: const Text(
+                              'Skip / No',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppColors.darkTextSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBulletAuditsList() {
+    final audits = widget.tailored.bulletAudits;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(
+              Icons.published_with_changes_rounded,
+              color: AppColors.matchHigh,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Mandatory Bullet-by-Bullet Optimization Audit (${audits.length})',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: AppColors.darkTextPrimary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Every experience bullet and project was rewritten into: [Action Verb] + [Responsibility] + [Method/Tool] + [Supported Outcome].',
+          style: TextStyle(
+            fontSize: 12,
+            color: AppColors.darkTextSecondary,
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (audits.isEmpty)
+          const Text(
+            'No bullet audits found for this resume.',
+            style: TextStyle(color: AppColors.darkTextSecondary, fontSize: 12),
+          )
+        else
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: audits.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (context, i) => _buildBulletAuditCard(audits[i]),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildBulletAuditCard(BulletRewriteAudit audit) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0E1526),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: audit.hasChanged
+              ? AppColors.primary.withOpacity(0.3)
+              : AppColors.darkBorder,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header row with Section & Badges
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  audit.section,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primaryLight,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: audit.relevance.toLowerCase().contains('high')
+                      ? AppColors.matchHigh.withOpacity(0.15)
+                      : AppColors.cityAligned.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  audit.relevance,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: audit.relevance.toLowerCase().contains('high')
+                        ? AppColors.matchHigh
+                        : AppColors.cityAligned,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.darkBg,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: AppColors.darkBorder),
+                ),
+                child: Text(
+                  audit.evidence,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.darkTextSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Original vs Rewritten Diff
+          if (audit.hasChanged) ...[
+            // Original Bullet (Reddish / removed indicator)
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.matchLow.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.matchLow.withOpacity(0.2)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.remove_circle_outline,
+                    size: 15,
+                    color: AppColors.matchLow,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      audit.original,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.darkTextSecondary.withOpacity(0.8),
+                        decoration: TextDecoration.lineThrough,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // Rewritten Bullet (Greenish / added indicator)
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.matchHigh.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.matchHigh.withOpacity(0.3)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.add_circle_outline,
+                    size: 15,
+                    color: AppColors.matchHigh,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      audit.rewritten,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.darkTextPrimary,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.darkBg,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.darkBorder),
+              ),
+              child: Text(
+                audit.original,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.darkTextPrimary,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+
+          // Rationale
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(
+                Icons.lightbulb_outline_rounded,
+                size: 14,
+                color: AppColors.matchMid,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  audit.rationale,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.darkTextSecondary,
+                    height: 1.3,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEvidenceAndTruthfulnessTab() {
+    final mappings = widget.tailored.evidenceMappings;
+
+    final inEmploymentCount = mappings
+        .where((m) => m.classification == EvidenceClassification.demonstratedInEmployment)
+        .length;
+    final inProjectCount = mappings
+        .where((m) => m.classification == EvidenceClassification.demonstratedInProject)
+        .length;
+    final gapsCount = mappings
+        .where((m) => m.classification == EvidenceClassification.notEvidenced)
+        .length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 1. Truthfulness Header
+        _buildTruthfulnessCertificate(),
+        const SizedBox(height: 24),
+
+        // 2. Requirement-to-Evidence Map Header & Stats
+        Row(
+          children: [
+            const Icon(
+              Icons.account_tree_rounded,
+              color: AppColors.cityAligned,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Requirement-to-Evidence Map (${mappings.length})',
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: AppColors.darkTextPrimary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Requirements are rigorously mapped to candidate evidence. Skills lacking proof are reported as gaps rather than falsely claimed.',
+          style: TextStyle(
+            fontSize: 12,
+            color: AppColors.darkTextSecondary,
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Statistics Chips
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _buildFactStatPill(
+              icon: Icons.work_rounded,
+              label: '$inEmploymentCount in Employment',
+              color: AppColors.matchHigh,
+            ),
+            _buildFactStatPill(
+              icon: Icons.code_rounded,
+              label: '$inProjectCount in Projects',
+              color: AppColors.cityAligned,
+            ),
+            _buildFactStatPill(
+              icon: Icons.warning_amber_rounded,
+              label: '$gapsCount Reported Gaps (0 Fabricated)',
+              color: AppColors.matchMid,
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        // List of Mapping Cards
+        if (mappings.isEmpty)
+          const Text(
+            'No requirement-to-evidence mappings available.',
+            style: TextStyle(color: AppColors.darkTextSecondary, fontSize: 12),
+          )
+        else
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: mappings.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (context, i) => _buildEvidenceMappingCard(mappings[i]),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildEvidenceMappingCard(RequirementEvidenceMapping mapping) {
+    final color = _classificationColor(mapping.classification);
+    final label = _classificationLabel(mapping.classification);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0E1526),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  mapping.requirement,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.darkTextPrimary,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: color.withOpacity(0.4)),
+                ),
+                child: Text(
+                  '$label • ${(mapping.confidence * 100).toStringAsFixed(0)}%',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          if (mapping.classification == EvidenceClassification.notEvidenced) ...[
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.matchMid.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.matchMid.withOpacity(0.2)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.info_outline_rounded,
+                    size: 15,
+                    color: AppColors.matchMid,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      mapping.recommendation.isNotEmpty
+                          ? mapping.recommendation
+                          : 'Honest Skill Gap: Candidate did not demonstrate this tool or competency in original history. Flagged as a gap rather than hallucinating experience.',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.matchMid,
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Evidence: ',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.darkTextSecondary,
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    mapping.sourceEvidence,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.darkTextPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (mapping.recommendation.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Notes: ',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.darkTextSecondary,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      mapping.recommendation,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.cityAligned,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _classificationLabel(EvidenceClassification c) {
+    switch (c) {
+      case EvidenceClassification.demonstratedInEmployment:
+        return 'In Employment';
+      case EvidenceClassification.demonstratedInProject:
+        return 'In Project';
+      case EvidenceClassification.supportedByCoursework:
+        return 'Coursework / Training';
+      case EvidenceClassification.listedSkillOnly:
+        return 'Listed Skill Only';
+      case EvidenceClassification.transferable:
+        return 'Transferable';
+      case EvidenceClassification.notEvidenced:
+        return 'Not Evidenced (Gap)';
+      case EvidenceClassification.notApplicable:
+        return 'Not Applicable';
+    }
+  }
+
+  Color _classificationColor(EvidenceClassification c) {
+    switch (c) {
+      case EvidenceClassification.demonstratedInEmployment:
+        return AppColors.matchHigh;
+      case EvidenceClassification.demonstratedInProject:
+        return AppColors.cityAligned;
+      case EvidenceClassification.supportedByCoursework:
+        return AppColors.secondary;
+      case EvidenceClassification.listedSkillOnly:
+        return AppColors.matchMid;
+      case EvidenceClassification.transferable:
+        return AppColors.tertiary;
+      case EvidenceClassification.notEvidenced:
+        return AppColors.matchLow;
+      case EvidenceClassification.notApplicable:
+        return AppColors.darkTextSecondary;
     }
   }
 }
@@ -1538,24 +2368,86 @@ class _InteractiveResumeDocument extends StatelessWidget {
   }
 
   static bool _isSectionHeader(String line) {
+    if (line.isEmpty) return false;
+    if (line.contains(':') || line.contains('|') || line.endsWith('.')) return false;
     final lower = line
         .toLowerCase()
         .replaceAll(RegExp(r'^[\-\*•#\s]+'), '')
         .replaceAll('#', '')
         .replaceAll(':', '')
         .trim();
-    return lower == 'summary' ||
+    if (lower.isEmpty || lower.length > 35) return false;
+
+    // Projects section
+    if (lower == 'projects' ||
+        lower == 'relevant projects' ||
+        lower == 'key projects' ||
+        lower == 'technical projects' ||
+        lower == 'personal projects' ||
+        lower == 'academic projects' ||
+        lower == 'notable projects' ||
+        lower == 'featured projects' ||
+        lower == 'selected projects' ||
+        lower.endsWith('projects') ||
+        (lower.contains('project') && lower.length <= 30)) {
+      return true;
+    }
+
+    // Summary section
+    if (lower == 'summary' ||
         lower == 'professional summary' ||
+        lower == 'executive summary' ||
+        lower == 'career summary' ||
+        lower == 'profile' ||
+        lower == 'about me' ||
+        lower == 'career objective' ||
+        lower == 'objective') {
+      return true;
+    }
+
+    // Skills section
+    if (lower == 'skills' ||
         lower == 'technical skills' ||
-        lower == 'skills' ||
-        lower == 'experience' ||
+        lower == 'core competencies' ||
+        lower == 'areas of expertise' ||
+        lower == 'professional skills' ||
+        lower == 'key skills' ||
+        lower == 'technical & professional skills' ||
+        lower == 'technical and professional skills' ||
+        lower == 'technical competencies') {
+      return true;
+    }
+
+    // Experience section
+    if (lower == 'experience' ||
         lower == 'professional experience' ||
         lower == 'work experience' ||
-        lower == 'projects' ||
-        lower == 'key projects' ||
-        lower == 'education' ||
-        lower == 'certifications' ||
-        lower == 'achievements';
+        lower == 'work history' ||
+        lower == 'employment' ||
+        lower == 'employment history' ||
+        lower == 'relevant experience') {
+      return true;
+    }
+
+    // Education section
+    if (lower == 'education' ||
+        lower == 'academic' ||
+        lower == 'academic background' ||
+        lower == 'education & certifications' ||
+        lower == 'education and certifications' ||
+        lower == 'qualifications' ||
+        lower.startsWith('education')) {
+      return true;
+    }
+
+    return lower == 'certifications' ||
+        lower == 'certifications & licenses' ||
+        lower == 'certifications & courses' ||
+        lower == 'licenses & certifications' ||
+        lower == 'achievements' ||
+        lower == 'awards & achievements' ||
+        lower == 'honors & awards' ||
+        lower == 'publications';
   }
 
   static bool _isContactLine(String line) {

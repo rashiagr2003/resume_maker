@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import '../../core/services/privacy_cleanup_service.dart';
 import '../../core/utils/pdf_extractor.dart';
 import '../../core/utils/resume_file_extractor.dart';
+import '../../core/utils/app_toast.dart';
 import '../../core/theme/app_theme.dart';
 import '../../domain/entities/analysis_result.dart';
 import '../providers/resume_providers.dart';
@@ -33,6 +34,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   bool _isUploading = false;
   String? _uploadedFileName;
   bool _showOptionalJobFields = false;
+  String? _jdError;
+  String? _resumeError;
 
   @override
   void initState() {
@@ -65,6 +68,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     _seniorityController.clear();
     setState(() {
       _uploadedFileName = null;
+      _jdError = null;
+      _resumeError = null;
     });
     ref.read(analysisProvider.notifier).reset();
     ref.read(tailoredResumeProvider.notifier).reset();
@@ -129,39 +134,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             _resumeController.text = extraction.text;
             setState(() {
               _uploadedFileName = file.name;
+              _resumeError = null;
             });
             ref.read(resumeInputProvider.notifier).updateResumeText(extraction.text);
             ref.read(resumeInputProvider.notifier).updateUploadedFileName(file.name);
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
+            AppToast.show(
+              context,
+              message:
                   'Successfully extracted ${file.name} (${extraction.fileType.toUpperCase()}, ${extraction.text.length} chars)!',
-                ),
-                backgroundColor: AppColors.matchHigh,
-              ),
+              type: ToastType.success,
             );
           } else {
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  extraction.errorMessage ?? 'Could not extract text from the document.',
-                ),
-                backgroundColor: AppColors.matchLow,
-                duration: const Duration(seconds: 5),
-              ),
+            AppToast.show(
+              context,
+              message: extraction.errorMessage ??
+                  'Could not extract text from the document.',
+              type: ToastType.error,
+              duration: const Duration(seconds: 5),
             );
           }
         }
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Note: Could not open file: $e. You can paste resume text directly!'),
-          backgroundColor: AppColors.matchMid,
-        ),
+      AppToast.show(
+        context,
+        message: 'Note: Could not open file: $e. You can paste resume text directly!',
+        type: ToastType.warning,
       );
     } finally {
       if (mounted) setState(() => _isUploading = false);
@@ -393,11 +394,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
           controller: _jdController,
           maxLines: 8,
           style: const TextStyle(fontSize: 13, height: 1.45),
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             hintText:
                 'Paste target Job Description here (responsibilities, required qualifications, tech stack)...',
+            errorText: _jdError,
           ),
           onChanged: (val) {
+            if (_jdError != null) setState(() => _jdError = null);
             ref.read(resumeInputProvider.notifier).updateJobDescription(val);
           },
         ),
@@ -628,10 +631,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
           controller: _resumeController,
           maxLines: 12,
           style: const TextStyle(fontSize: 13, height: 1.45),
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             hintText: 'Paste current resume text here, or click "Upload Resume" above...',
+            errorText: _resumeError,
           ),
           onChanged: (val) {
+            if (_resumeError != null) setState(() => _resumeError = null);
             ref.read(resumeInputProvider.notifier).updateResumeText(val);
           },
         ),
@@ -755,18 +760,55 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
               : () {
                   _syncControllersToProvider();
                   ref.read(tailoredResumeProvider.notifier).reset();
-                  final input = ref.read(resumeInputProvider);
-                  if (!input.isValid) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Please provide both Job Description and Resume (minimum 20 characters each).',
-                        ),
-                        backgroundColor: AppColors.matchMid,
-                      ),
+
+                  final jd = _jdController.text.trim();
+                  final resume = _resumeController.text.trim();
+
+                  String? jdErr;
+                  String? resumeErr;
+
+                  if (jd.isEmpty) {
+                    jdErr = 'Job Description is mandatory.';
+                  } else if (jd.length < 20) {
+                    jdErr = 'Job Description too brief (minimum 20 characters required).';
+                  }
+
+                  if (resume.isEmpty) {
+                    resumeErr = 'Candidate Resume is mandatory.';
+                  } else if (resume.length < 20) {
+                    resumeErr = 'Resume content too brief (minimum 20 characters required).';
+                  }
+
+                  setState(() {
+                    _jdError = jdErr;
+                    _resumeError = resumeErr;
+                  });
+
+                  if (jdErr != null && resumeErr != null) {
+                    AppToast.show(
+                      context,
+                      message:
+                          '⚠️ Mandatory Fields Required: Please provide both the Job Description and Resume (minimum 20 characters each).',
+                      type: ToastType.warning,
+                    );
+                    return;
+                  } else if (jdErr != null) {
+                    AppToast.show(
+                      context,
+                      message: '⚠️ Mandatory Field Missing: $jdErr',
+                      type: ToastType.warning,
+                    );
+                    return;
+                  } else if (resumeErr != null) {
+                    AppToast.show(
+                      context,
+                      message: '⚠️ Mandatory Field Missing: $resumeErr',
+                      type: ToastType.warning,
                     );
                     return;
                   }
+
+                  final input = ref.read(resumeInputProvider);
                   ref.read(analysisProvider.notifier).runAnalysis(input);
                 },
           child: isAnalyzing
